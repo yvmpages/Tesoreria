@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tesorería - Control de Gastos y Movimientos</title>
+  <!-- SEO & Meta Tags -->
+  <meta name="description" content="Aplicación web premium para control de tesorería mensual por rubros y periodos, con contabilidad especial e impuesto 4x1000.">
+  <!-- Google Fonts: Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- FontAwesome for Premium Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  
+  <!-- Pantalla de Inicio de Sesión -->
+  <div id="login-screen" class="login-screen">
+    <div class="login-card">
+      <div class="login-header">
+        <i class="fa-solid fa-vault login-logo"></i>
+        <h1>Tesorería Norte del Cauca</h1>
+        <p>Ingrese sus credenciales para continuar</p>
+      </div>
+      <form id="login-form">
+        <div class="form-group">
+          <label for="login-username"><i class="fa-solid fa-user"></i> Usuario</label>
+          <input type="text" id="login-username" class="form-control" placeholder="Ingrese su usuario" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="login-password"><i class="fa-solid fa-lock"></i> Contraseña</label>
+          <div class="password-input-wrapper">
+            <input type="password" id="login-password" class="form-control" placeholder="Ingrese su contraseña" required autocomplete="current-password">
+            <button type="button" id="toggle-password" class="btn-toggle-password" aria-label="Mostrar/Ocultar contraseña">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-login">
+          <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Outer App Layout -->
+  <div class="app-container" style="display: none;">
+    
+    <!-- Mobile Header Bar -->
+    <header class="mobile-header">
+      <div class="mobile-logo">
+        <i class="fa-solid fa-vault"></i>
+        <span>Tesorería</span>
+      </div>
+      <button id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="Abrir Menú">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+    </header>
+
+    <!-- LEFT SIDEBAR MENU -->
+    <aside class="app-sidebar" id="app-sidebar">
+      
+      <!-- Brand Logo / Header inside Sidebar -->
+      <div class="sidebar-brand">
+        <i class="fa-solid fa-vault brand-icon"></i>
+        <div>
+          <h2>Tesorería</h2>
+          <p class="brand-subtitle">Norte del Cauca</p>
+        </div>
+      </div>
+      
+      <!-- Sidebar Content Wrapper (scrollable) -->
+      <div class="sidebar-content">
+        
+        <!-- Period Management Card -->
+        <div class="sidebar-card">
+          <span class="card-title-sm"><i class="fa-solid fa-calendar-days"></i> Período Activo</span>
+          <div class="sidebar-period-selector-wrapper">
+            <select id="period-selector" class="select-input sidebar-select">
+              <!-- Dynamic periods go here -->
+            </select>
+          </div>
+          <button id="btn-new-period" class="btn btn-primary btn-sm btn-full-width">
+            <i class="fa-solid fa-plus"></i> Nuevo Período
+          </button>
+        </div>
+
+        <!-- Vertical Navigation Links -->
+        <nav class="sidebar-nav">
+          <button id="tab-summary" class="nav-tab active" data-tab="summary-section">
+            <i class="fa-solid fa-chart-pie"></i> Resumen Período
+          </button>
+          <button id="tab-movements" class="nav-tab" data-tab="movements-section">
+            <i class="fa-solid fa-money-bill-transfer"></i> Movimientos
+          </button>
+          <button id="tab-trash" class="nav-tab trash-tab" data-tab="trash-section">
+            <i class="fa-solid fa-trash-can"></i> Papelera
+            <span id="trash-count-badge" class="trash-badge">0</span>
+          </button>
+        </nav>
+
+        <!-- Database Backups -->
+        <div class="sidebar-card sidebar-footer-card">
+          <span class="card-title-sm"><i class="fa-solid fa-database"></i> Copia de Seguridad</span>
+          <div class="backup-stack">
+            <button id="btn-export" class="btn btn-secondary-outline btn-sm" title="Exportar Respaldos">
+              <i class="fa-solid fa-download"></i> Respaldar
+            </button>
+            <button id="btn-import" class="btn btn-secondary-outline btn-sm" title="Restaurar Respaldos">
+              <i class="fa-solid fa-upload"></i> Restaurar
+            </button>
+          </div>
+          <button id="btn-logout" class="btn btn-danger-outline btn-sm btn-full-width" style="margin-top: 8px;">
+            <i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión
+          </button>
+          <input type="file" id="import-file" accept=".json" style="display: none;">
+        </div>
+
+      </div>
+
+    </aside>
+
+    <!-- MAIN RIGHT CONTENT AREA -->
+    <main class="app-main">
+      
+      <!-- Period Card Wrap Box -->
+      <section id="period-box" class="period-box-card">
+        
+        <div class="period-box-header">
+          <h2 id="current-period-title"><i class="fa-solid fa-calendar-week"></i> Registros de Mayo - Abril</h2>
+          <div class="period-actions-header">
+            <span class="badge" id="current-period-badge">Mayo - Abril</span>
+            <button id="btn-delete-period-trigger" class="btn-delete-period" title="Eliminar este período actual">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+        </div>
+        
+        <div class="period-box-body">
+          
+          <!-- ================= TAB 1: RESUMEN ================= -->
+          <div id="summary-section" class="tab-pane active">
+            
+            <!-- Rubros Annual Table Card -->
+            <div class="data-card">
+              <div class="card-header">
+                <h3><i class="fa-solid fa-table-list"></i> Tabla General de Rubros</h3>
+                <span class="info-tooltip" title="Los presupuestos iniciales se guardan automáticamente al escribirlos en la tabla.">
+                  <i class="fa-solid fa-circle-info"></i> Edición de Presupuesto Anual
+                </span>
+              </div>
+              <div class="table-responsive">
+                <table id="table-rubros-summary" class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Rubro</th>
+                      <th class="text-right">Presupuesto Anual</th>
+                      <th class="text-right">Gasto Real (Resumen)</th>
+                      <th class="text-right">Dinero Sobrante</th>
+                    </tr>
+                  </thead>
+                  <tbody id="rubros-summary-body">
+                    <!-- Dynamic rows go here -->
+                  </tbody>
+                  <tfoot>
+                    <tr class="total-row">
+                      <td>TOTAL GENERAL</td>
+                      <td class="text-right" id="total-annual-budget">$0.00</td>
+                      <td class="text-right" id="total-annual-spent">$0.00</td>
+                      <td class="text-right" id="total-annual-remaining">$0.00</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+
+            <!-- Monthly Summary Card -->
+            <div class="data-card margin-top">
+              <div class="card-header">
+                <h3><i class="fa-solid fa-chart-line"></i> Resumen de Flujo Mensual</h3>
+                <p class="card-desc">Comparativa del presupuesto solicitado y gastado mes a mes en el año.</p>
+              </div>
+              <div class="table-responsive">
+                <table id="table-monthly-summary" class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Mes</th>
+                      <th class="text-right">Dinero Solicitado (Asignado)</th>
+                      <th class="text-right">Dinero Gastado (Envíos + 4x1000)</th>
+                      <th class="text-right">Balance Mensual</th>
+                    </tr>
+                  </thead>
+                  <tbody id="monthly-summary-body">
+                    <!-- Dynamic rows for Mayo to Abril -->
+                  </tbody>
+                  <tfoot>
+                    <tr class="total-row">
+                      <td>TOTAL DEL PERÍODO</td>
+                      <td class="text-right" id="total-monthly-requested">$0.00</td>
+                      <td class="text-right" id="total-monthly-spent">$0.00</td>
+                      <td class="text-right" id="total-monthly-difference">$0.00</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+            
+          </div>
+
+          <!-- ================= TAB 2: MOVIMIENTOS ================= -->
+          <div id="movements-section" class="tab-pane">
+            
+            <!-- Month Dropdown Selector -->
+            <div class="month-selector-wrapper">
+              <label for="month-dropdown-selector"><i class="fa-solid fa-calendar-check"></i> Seleccionar Mes:</label>
+              <select id="month-dropdown-selector" class="select-input month-dropdown-select">
+                <!-- Dynamic month options rendered via Javascript -->
+              </select>
+            </div>
+
+            <!-- Month Detailed Container -->
+            <div class="month-detail-container">
+              <div class="month-header">
+                <h3 id="active-month-title">Mes de Mayo</h3>
+                <span class="active-year-badge" id="active-month-year">2026</span>
+              </div>
+
+              <!-- Month Financial Metrics Cards -->
+              <div class="metrics-grid">
+                <div class="metric-card requested">
+                  <div class="metric-icon"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                  <div class="metric-info">
+                    <span class="metric-label">Dinero Solicitado</span>
+                    <h4 class="metric-value" id="month-metric-requested">$0.00</h4>
+                    <p class="metric-desc">Presupuesto asignado al mes</p>
+                  </div>
+                </div>
+
+                <div class="metric-card spent">
+                  <div class="metric-icon"><i class="fa-solid fa-receipt"></i></div>
+                  <div class="metric-info">
+                    <span class="metric-label">Dinero Gastado</span>
+                    <h4 class="metric-value" id="month-metric-spent">$0.00</h4>
+                    <p class="metric-desc">Envíos del mes + Impuesto 4x1000</p>
+                  </div>
+                </div>
+
+                <div class="metric-card remaining">
+                  <div class="metric-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+                  <div class="metric-info">
+                    <span class="metric-label">Dinero Sobrante</span>
+                    <h4 class="metric-value" id="month-metric-remaining">$0.00</h4>
+                    <p class="metric-desc">Balance disponible del mes</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Split Layout: Rubros and 4x1000 -->
+              <div class="movements-split-layout">
+                
+                <!-- Left Side: Rubros list of the month -->
+                <div class="rubros-column">
+                  <div class="column-header">
+                    <h4><i class="fa-solid fa-box-archive"></i> Rubros en Curso este Mes</h4>
+                    <button id="btn-add-month-rubro" class="btn btn-success btn-sm">
+                      <i class="fa-solid fa-folder-plus"></i> Agregar Rubro al Mes
+                    </button>
+                  </div>
+                  
+                  <div id="month-rubros-container" class="rubros-cards-list">
+                    <!-- Dynamic Month Rubro Cards go here -->
+                  </div>
+                </div>
+
+                <!-- Right Side: Bank Charges (4 x 1000) -->
+                <div class="bank-column">
+                  <div class="data-card bank-charge-card">
+                    <div class="card-header bank-header">
+                      <h4><i class="fa-solid fa-building-columns"></i> Cobros Bancarios (4 x 1000)</h4>
+                      <button id="btn-add-tax" class="btn btn-secondary btn-sm">
+                        <i class="fa-solid fa-plus"></i> Registrar Cobro
+                      </button>
+                    </div>
+                    
+                    <div class="bank-card-body">
+                      <div class="bank-metric">
+                        <span class="bank-label">Total 4x1000 del Mes:</span>
+                        <span class="bank-value" id="month-tax-total">$0.00</span>
+                      </div>
+                      
+                      <div class="table-responsive">
+                        <table class="bank-table">
+                          <thead>
+                            <tr>
+                              <th>Fecha</th>
+                              <th>Motivo</th>
+                              <th class="text-right">Valor</th>
+                              <th class="text-center">Acciones</th>
+                            </tr>
+                          </thead>
+                          <tbody id="month-tax-body">
+                            <!-- Dynamic rows of 4x1000 -->
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+          <!-- ================= TAB 3: PAPELERA ================= -->
+          <div id="trash-section" class="tab-pane">
+            
+            <div class="data-card">
+              <div class="card-header trash-header-actions">
+                <div>
+                  <h3><i class="fa-solid fa-trash-can"></i> Papelera de Reciclaje</h3>
+                  <p class="card-desc" style="margin-top: 4px;">Los elementos eliminados se guardan aquí. Puedes restaurarlos a su posición original o borrarlos definitivamente.</p>
+                </div>
+                <button id="btn-empty-trash" class="btn btn-danger-outline btn-sm">
+                  <i class="fa-solid fa-dumpster-fire"></i> Vaciar Papelera
+                </button>
+              </div>
+
+              <div id="trash-empty-state" class="empty-state" style="display: none;">
+                <i class="fa-solid fa-trash-arrow-up empty-icon"></i>
+                <p>La papelera está vacía.</p>
+                <p class="small text-muted">Los elementos que elimines aparecerán aquí para que los puedas recuperar.</p>
+              </div>
+
+              <!-- Trash list container -->
+              <div id="trash-items-list" class="trash-list">
+                <!-- Dynamic trash cards go here -->
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- Modal Backdrop -->
+  <div class="modal-backdrop" id="modal-backdrop"></div>
+
+  <!-- Modal: Crear Periodo -->
+  <div class="modal" id="modal-create-period">
+    <div class="modal-header">
+      <h3>Crear Nuevo Período de Registro</h3>
+      <button class="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form id="form-create-period">
+      <div class="modal-body">
+        <p class="modal-instructions">
+          Los períodos de tesorería comprenden desde <strong>Mayo</strong> de un año hasta <strong>Abril</strong> del año siguiente.
+        </p>
+        <div class="form-group">
+          <label for="period-start-year">Año de Inicio (Mayo):</label>
+          <input type="number" id="period-start-year" class="form-control" min="2000" max="2100" required>
+        </div>
+        <div class="period-preview">
+          <span class="preview-label">Nombre del período generado:</span>
+          <strong class="preview-value" id="period-name-preview">-</strong>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-close-modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Crear Período</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Modal: Agregar Rubro al Mes -->
+  <div class="modal" id="modal-add-rubro">
+    <div class="modal-header">
+      <h3>Agregar Rubro al Mes</h3>
+      <button class="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form id="form-add-rubro">
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="rubro-select-input">Seleccionar Rubro:</label>
+          <select id="rubro-select-input" class="form-control" required>
+            <!-- Predefined rubros filtered out if already in current month -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="rubro-monthly-budget">Dinero para utilizar este mes ($):</label>
+          <input type="number" id="rubro-monthly-budget" class="form-control" min="0" value="0" step="any" required>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-close-modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Agregar Rubro</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Modal: Editar Rubro del Mes (Transferencia de movimientos) -->
+  <div class="modal" id="modal-edit-rubro">
+    <div class="modal-header">
+      <h3>Editar / Cambiar Rubro del Mes</h3>
+      <button class="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form id="form-edit-rubro">
+      <input type="hidden" id="edit-rubro-old-name">
+      <div class="modal-body">
+        <div class="rubro-info-banner">
+          <span class="banner-label">Rubro Actual:</span>
+          <strong class="banner-value" id="edit-rubro-current-name">-</strong>
+        </div>
+        <p class="modal-instructions">
+          Al cambiar la categoría del rubro, todos los movimientos registrados dentro del mes de <strong><span id="edit-rubro-month-label">-</span></strong> se conservarán intactos y pasarán al nuevo rubro seleccionado.
+        </p>
+        <div class="form-group">
+          <label for="edit-rubro-select-input">Seleccionar Nueva Categoría:</label>
+          <select id="edit-rubro-select-input" class="form-control" required>
+            <!-- Available rubros -->
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-close-modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Aplicar Cambio</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Modal: Registrar/Editar Movimiento (Acción Dual) -->
+  <div class="modal" id="modal-add-movement">
+    <div class="modal-header">
+      <h3 id="movement-modal-title">Registrar Movimiento</h3>
+      <button class="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form id="form-add-movement">
+      <!-- Hidden states -->
+      <input type="hidden" id="movement-rubro-id">
+      <input type="hidden" id="movement-id"> <!-- Empty in add mode, filled in edit mode -->
+      
+      <div class="modal-body">
+        <div class="rubro-info-banner">
+          <span class="banner-label">Rubro:</span>
+          <strong class="banner-value" id="movement-rubro-name">-</strong>
+        </div>
+        
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="movement-date">Fecha:</label>
+            <input type="date" id="movement-date" class="form-control" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="movement-type">Tipo de Movimiento:</label>
+            <select id="movement-type" class="form-control" required>
+              <option value="envio">Envío (Gasto/Salida)</option>
+              <option value="ingreso">Ingreso (Entrada)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="movement-value">Valor ($):</label>
+          <input type="number" id="movement-value" class="form-control" min="0" step="any" placeholder="Ej. 5000" required>
+        </div>
+
+        <div class="form-group">
+          <label for="movement-reason">Motivo del Movimiento:</label>
+          <textarea id="movement-reason" class="form-control" rows="2" placeholder="Ej. Compra de papelería" required></textarea>
+        </div>
+
+        <!-- Special Section: Only for Visitas, Facilitador, Secretario and when type is Envio -->
+        <div class="special-rubro-box" id="special-rubro-fields" style="display: none;">
+          <div class="special-box-header">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <h5>Regla Contable Especial</h5>
+          </div>
+          <p class="special-box-desc">
+            Se contará el monto total entregado como gastado en el mes, pero en el Resumen Anual se computará el gasto real.
+          </p>
+          <div class="form-group">
+            <label for="movement-real-spent">Gasto Real Realizado ($):</label>
+            <input type="number" id="movement-real-spent" class="form-control" min="0" step="any" placeholder="Ej. 2000">
+            <p class="input-helper">Si no se conoce aún, deje vacío (será igual al valor entregado).</p>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-close-modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-movement">Registrar</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Modal: Registrar/Editar 4x1000 -->
+  <div class="modal" id="modal-add-tax">
+    <div class="modal-header">
+      <h3 id="tax-modal-title">Registrar Cobro Bancario (4 x 1000)</h3>
+      <button class="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form id="form-add-tax">
+      <input type="hidden" id="tax-id"> <!-- Empty in add mode, filled in edit mode -->
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="tax-date">Fecha:</label>
+          <input type="date" id="tax-date" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label for="tax-value">Valor del Cobro ($):</label>
+          <input type="number" id="tax-value" class="form-control" min="0" step="any" placeholder="Ej. 20" required>
+        </div>
+        <div class="form-group">
+          <label for="tax-reason">Motivo / Detalle:</label>
+          <input type="text" id="tax-reason" class="form-control" placeholder="Ej. Retiro bancario cobro" required>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-close-modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-tax">Registrar Cobro</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- MODAL: CONFIRMACIÓN PERSONALIZADA DE ELIMINACIÓN / PAPELERA -->
+  <div class="modal modal-alert" id="modal-confirm-action">
+    <div class="modal-header alert-header">
+      <h3 id="confirm-title"><i class="fa-solid fa-circle-exclamation text-warning"></i> Confirmar Acción</h3>
+      <button class="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body alert-body">
+      <div class="alert-content-wrapper">
+        <div class="alert-icon-box" id="confirm-icon-box">
+          <i class="fa-solid fa-trash-can text-danger"></i>
+        </div>
+        <div class="alert-text">
+          <p id="confirm-message">¿Está seguro de enviar este elemento a la papelera?</p>
+          <p class="confirm-submessage small text-muted" id="confirm-submessage">Podrás recuperarlo desde la pestaña Papelera.</p>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer alert-footer">
+      <button type="button" class="btn btn-secondary btn-close-modal" id="btn-confirm-cancel">Cancelar</button>
+      <button type="button" class="btn btn-danger" id="btn-confirm-accept">Confirmar</button>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="app.js"></script>
+</body>
+</html>
