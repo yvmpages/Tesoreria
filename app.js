@@ -115,7 +115,8 @@ function createEmptyPeriod(startYear) {
     months[m.key] = {
       year: year,
       rubros: {}, 
-      tax4x1000: [] 
+      tax4x1000: [],
+      aportesFondo: []
     };
   });
 
@@ -149,6 +150,18 @@ function loadState() {
         initializeDefaultState();
         return;
       }
+      
+      // Ensure all months in all periods have aportesFondo
+      state.periods.forEach(p => {
+        if (p.months) {
+          MONTHS_ORDER.forEach(m => {
+            if (p.months[m.key] && !p.months[m.key].aportesFondo) {
+              p.months[m.key].aportesFondo = [];
+            }
+          });
+        }
+      });
+
       if (state.periods.length > 0 && !state.periods.find(p => p.id === state.activePeriodId)) {
         state.activePeriodId = state.periods[0].id;
       }
@@ -221,11 +234,22 @@ function calculateMonthRubroStats(monthData, rubroName) {
 }
 
 function calculateMonthStats(monthData) {
+  if (!monthData) {
+    return {
+      requested: 0,
+      spent: 0,
+      income: 0,
+      taxSpent: 0,
+      fundTotal: 0,
+      remaining: 0,
+      remainingWithFund: 0
+    };
+  }
   let requested = 0; 
   let spent = 0;     
   let income = 0;    
 
-  Object.keys(monthData.rubros).forEach(rubroName => {
+  Object.keys(monthData.rubros || {}).forEach(rubroName => {
     const stats = calculateMonthRubroStats(monthData, rubroName);
     requested += stats.budget;
     spent += stats.spent;
@@ -233,19 +257,28 @@ function calculateMonthStats(monthData) {
   });
 
   let taxSpent = 0;
-  monthData.tax4x1000.forEach(t => {
+  (monthData.tax4x1000 || []).forEach(t => {
     taxSpent += t.value;
   });
   spent += taxSpent;
 
+  let fundTotal = 0;
+  const aportes = monthData.aportesFondo || [];
+  aportes.forEach(a => {
+    fundTotal += a.value;
+  });
+
   const remaining = requested + income - spent;
+  const remainingWithFund = remaining + fundTotal;
 
   return {
     requested,
     spent,
     income,
     taxSpent,
-    remaining
+    fundTotal,
+    remaining,
+    remainingWithFund
   };
 }
 
@@ -389,17 +422,18 @@ function renderSummaryTab() {
     }
     tr.appendChild(tdName);
 
+    const formattedBudget = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(stats.initialBudget || 0);
+
     const tdBudget = document.createElement("td");
     tdBudget.className = "budget-input-cell text-right";
     tdBudget.innerHTML = `
       <div class="budget-setter">
         <span class="currency-symbol">$</span>
-        <input type="number" 
+        <input type="text" 
                class="table-budget-input annual-budget-input" 
                data-rubro="${rubro}" 
-               value="${stats.initialBudget || 0}" 
-               step="any" 
-               min="0">
+               value="${formattedBudget}" 
+               placeholder="0">
       </div>
     `;
     tr.appendChild(tdBudget);
@@ -438,6 +472,7 @@ function renderSummaryTab() {
   totalRemEl.className = `text-right ${totalRemaining >= 0 ? 'val-positive' : 'val-negative'}`;
 
   renderMonthlyFlowSummary(period);
+  renderFundSummaryTable(period);
 }
 
 function renderMonthlyFlowSummary(period) {
@@ -449,7 +484,8 @@ function renderMonthlyFlowSummary(period) {
   let grandDiff = 0;
 
   MONTHS_ORDER.forEach(m => {
-    const monthData = period.months[m.key];
+    const monthData = period.months ? period.months[m.key] : null;
+    if (!monthData) return;
     const stats = calculateMonthStats(monthData);
 
     grandRequested += stats.requested;
@@ -476,6 +512,34 @@ function renderMonthlyFlowSummary(period) {
   grandDiffEl.className = `text-right ${grandDiff >= 0 ? 'val-positive' : 'val-negative'}`;
 }
 
+function renderFundSummaryTable(period) {
+  const tbody = document.getElementById("fund-summary-body");
+  tbody.innerHTML = "";
+
+  let grandTotal = 0;
+
+  MONTHS_ORDER.forEach(m => {
+    const monthData = period.months ? period.months[m.key] : null;
+    if (!monthData) return;
+    const aportes = monthData.aportesFondo || [];
+    let monthlyTotal = 0;
+    aportes.forEach(a => {
+      monthlyTotal += a.value;
+    });
+
+    grandTotal += monthlyTotal;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><strong>${m.label} ${monthData.year}</strong></td>
+      <td class="text-right val-positive">${formatCurrency(monthlyTotal)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById("total-annual-funds").textContent = formatCurrency(grandTotal);
+}
+
 // RENDER TAB 2: MOVIMIENTOS
 function renderMonthDropdown() {
   const selector = document.getElementById("month-dropdown-selector");
@@ -486,7 +550,8 @@ function renderMonthDropdown() {
   if (!period) return;
 
   MONTHS_ORDER.forEach(m => {
-    const monthData = period.months[m.key];
+    const monthData = period.months ? period.months[m.key] : null;
+    if (!monthData) return;
     const stats = calculateMonthStats(monthData);
 
     const opt = document.createElement("option");
@@ -517,10 +582,15 @@ function renderMovementsTab() {
   
   const remEl = document.getElementById("month-metric-remaining");
   remEl.textContent = formatCurrency(stats.remaining);
-  remEl.parentElement.className = `metric-info ${stats.remaining >= 0 ? 'val-positive' : 'val-negative'}`;
+  remEl.className = `metric-value-sm ${stats.remaining >= 0 ? 'val-positive' : 'val-negative'}`;
+
+  const remWithFundEl = document.getElementById("month-metric-remaining-with-fund");
+  remWithFundEl.textContent = formatCurrency(stats.remainingWithFund);
+  remWithFundEl.className = `metric-value-sm ${stats.remainingWithFund >= 0 ? 'val-positive' : 'val-negative'}`;
 
   renderMonthRubrosList(monthData);
   renderMonthTaxList(monthData);
+  renderMonthFundList(monthData);
 }
 
 function renderMonthRubrosList(monthData) {
@@ -643,7 +713,7 @@ function renderMonthRubrosList(monthData) {
         const realSpentVal = (m.realSpent !== undefined && m.realSpent !== null) ? m.realSpent : m.value;
 
         tableHtml += `
-          <tr>
+          <tr class="movement-row" data-rubro="${rubroName}" data-mov-id="${m.id}">
             <td>${m.date}</td>
             <td title="${m.reason}">${m.reason.length > 25 ? m.reason.substring(0, 22) + '...' : m.reason}</td>
             <td class="${typeClass}"><strong>${typeLabel}</strong></td>
@@ -651,6 +721,12 @@ function renderMonthRubrosList(monthData) {
             ${isSpecial ? `<td class="text-right font-weight-500 val-neutral">${m.type === 'envio' ? formatCurrency(realSpentVal) : '-'}</td>` : ''}
             <td class="text-center">
               <div class="action-buttons-cell" style="display: flex; justify-content: center; gap: 4px;">
+                <button class="btn-notes-item btn-notes-movement-trigger" 
+                        data-rubro="${rubroName}" 
+                        data-mov-id="${m.id}" 
+                        title="Notas del movimiento">
+                  <i class="fa-solid fa-comment-dots"></i>
+                </button>
                 <button class="btn-edit-item btn-edit-movement-trigger" 
                         data-rubro="${rubroName}" 
                         data-mov-id="${m.id}" 
@@ -703,16 +779,70 @@ function renderMonthTaxList(monthData) {
 
   monthData.tax4x1000.forEach(t => {
     const tr = document.createElement("tr");
+    tr.className = "movement-row";
+    tr.setAttribute("data-rubro", "4x1000");
+    tr.setAttribute("data-mov-id", t.id);
     tr.innerHTML = `
       <td>${t.date}</td>
       <td title="${t.reason}">${t.reason.length > 15 ? t.reason.substring(0, 12) + '...' : t.reason}</td>
       <td class="text-right val-negative font-weight-500">${formatCurrency(t.value)}</td>
       <td class="text-center">
         <div class="action-buttons-cell" style="display: flex; justify-content: center; gap: 4px;">
+          <button class="btn-notes-item btn-notes-movement-trigger" data-rubro="4x1000" data-mov-id="${t.id}" title="Notas del cobro">
+            <i class="fa-solid fa-comment-dots"></i>
+          </button>
           <button class="btn-edit-item btn-edit-tax-trigger" data-tax-id="${t.id}" title="Editar cobro">
             <i class="fa-solid fa-pen-to-square"></i>
           </button>
           <button class="btn-delete-item btn-delete-tax-trigger" data-tax-id="${t.id}" title="Eliminar cobro">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderMonthFundList(monthData) {
+  const tbody = document.getElementById("month-fund-body");
+  tbody.innerHTML = "";
+
+  const aportes = monthData.aportesFondo || [];
+  let total = 0;
+  aportes.forEach(a => {
+    total += a.value;
+  });
+
+  document.getElementById("month-fund-total").textContent = formatCurrency(total);
+
+  if (aportes.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="4" class="text-center text-muted small" style="padding: 12px;">No hay aportes registrados.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  aportes.forEach(a => {
+    const tr = document.createElement("tr");
+    tr.className = "movement-row";
+    tr.setAttribute("data-rubro", "aporteFondo");
+    tr.setAttribute("data-mov-id", a.id);
+    tr.innerHTML = `
+      <td>${a.date}</td>
+      <td title="${a.reason}">${a.reason.length > 15 ? a.reason.substring(0, 12) + '...' : a.reason}</td>
+      <td class="text-right val-positive font-weight-500">${formatCurrency(a.value)}</td>
+      <td class="text-center">
+        <div class="action-buttons-cell" style="display: flex; justify-content: center; gap: 4px;">
+          <button class="btn-notes-item btn-notes-movement-trigger" data-rubro="aporteFondo" data-mov-id="${a.id}" title="Notas del aporte">
+            <i class="fa-solid fa-comment-dots"></i>
+          </button>
+          <button class="btn-edit-item btn-edit-fund-trigger" data-fund-id="${a.id}" title="Editar aporte">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+          <button class="btn-delete-item btn-delete-fund-trigger" data-fund-id="${a.id}" title="Eliminar aporte">
             <i class="fa-solid fa-trash-can"></i>
           </button>
         </div>
@@ -768,6 +898,20 @@ function renderTrashTab() {
       typeLabel = "Impuesto 4x1000";
       const monthLabel = MONTHS_ORDER.find(m => m.key === item.originalMonthKey)?.label || item.originalMonthKey;
       detailsLabel = `Cobro bancario de ${formatCurrency(item.data.value)} en el mes de ${monthLabel} - Detalle: "${item.data.reason}"`;
+    } else if (item.type === "aporteFondo") {
+      iconClass = "type-movement fa-piggy-bank";
+      typeLabel = "Aporte al Fondo";
+      const monthLabel = MONTHS_ORDER.find(m => m.key === item.originalMonthKey)?.label || item.originalMonthKey;
+      detailsLabel = `Aporte al fondo de ${formatCurrency(item.data.value)} en el mes de ${monthLabel} - Detalle: "${item.data.reason}"`;
+    } else if (item.type === "note") {
+      iconClass = "type-note fa-sticky-note";
+      typeLabel = "Nota";
+      const monthLabel = MONTHS_ORDER.find(m => m.key === item.originalMonthKey)?.label || item.originalMonthKey;
+      let targetLabel = item.originalRubroName;
+      if (item.originalRubroName === "4x1000") targetLabel = "Cobro Bancario";
+      else if (item.originalRubroName === "aporteFondo") targetLabel = "Aporte al Fondo";
+      else targetLabel = `Rubro "${item.originalRubroName}"`;
+      detailsLabel = `Nota del ${item.data.date}: "${item.data.content}" en ${targetLabel} (${monthLabel})`;
     } else { // period
       detailsLabel = `Período completo "${item.data.name}" (${item.data.id})`;
     }
@@ -863,6 +1007,32 @@ function restoreTrashItem(itemId) {
       // Re-insert tax 4x1000
       monthData.tax4x1000.push(item.data);
       monthData.tax4x1000.sort((a,b) => new Date(a.date) - new Date(b.date));
+    }
+    else if (item.type === "aporteFondo") {
+      // Re-insert Aporte al Fondo
+      monthData.aportesFondo = monthData.aportesFondo || [];
+      monthData.aportesFondo.push(item.data);
+      monthData.aportesFondo.sort((a,b) => new Date(a.date) - new Date(b.date));
+    }
+    else if (item.type === "note") {
+      // Re-insert Note
+      let movement;
+      if (item.originalRubroName === "4x1000") {
+        movement = monthData.tax4x1000.find(t => t.id === item.originalMovementId);
+      } else if (item.originalRubroName === "aporteFondo") {
+        movement = monthData.aportesFondo.find(a => a.id === item.originalMovementId);
+      } else {
+        movement = monthData.rubros[item.originalRubroName]?.movements.find(m => m.id === item.originalMovementId);
+      }
+      
+      if (movement) {
+        movement.notes = movement.notes || [];
+        movement.notes.push(item.data);
+        movement.notes.sort((a,b) => new Date(a.date) - new Date(b.date));
+      } else {
+        alert("No se pudo restaurar la nota porque el movimiento o registro original ya no existe.");
+        return;
+      }
     }
   }
 
@@ -1146,6 +1316,227 @@ function handleDeleteMovement(rubroName, movId) {
   );
 }
 
+// ==========================================================================
+// MOVEMENT NOTES MANAGEMENT LÓGICA
+// ==========================================================================
+
+function handleOpenMovementNotes(rubroName, movId, readOnly = false) {
+  const period = getActivePeriod();
+  if (!period) return;
+
+  const monthKey = state.activeMonthKey;
+  const monthData = period.months[monthKey];
+  
+  let movement;
+  let displayName = rubroName;
+  let displayType = "";
+  
+  if (rubroName === "4x1000") {
+    movement = monthData.tax4x1000.find(t => t.id === movId);
+    displayName = "Impuesto Bancario 4 x 1000";
+    displayType = "Gasto Bancario";
+  } else if (rubroName === "aporteFondo") {
+    movement = monthData.aportesFondo.find(a => a.id === movId);
+    displayName = "Aporte al Fondo";
+    displayType = "Aporte (Entrada)";
+  } else {
+    const rubroMonthData = monthData.rubros[rubroName];
+    if (rubroMonthData) {
+      movement = rubroMonthData.movements.find(m => m.id === movId);
+      displayType = movement ? (movement.type === "envio" ? "Envío" : "Ingreso") : "";
+    }
+  }
+
+  if (!movement) return;
+
+  // Render Movement Info in Modal
+  document.getElementById("note-detail-rubro").textContent = displayName;
+  document.getElementById("note-detail-date").textContent = movement.date;
+  document.getElementById("note-detail-type").textContent = displayType;
+  
+  const isEnvio = rubroName === "4x1000" || (movement && movement.type === "envio");
+  document.getElementById("note-detail-value").textContent = formatCurrency(movement.value);
+  document.getElementById("note-detail-value").className = isEnvio ? "val-negative" : "val-positive";
+  
+  const realSpentWrapper = document.getElementById("note-detail-real-spent-wrapper");
+  const isSpecial = SPECIAL_RUBROS.includes(rubroName);
+  if (isSpecial && movement.type === "envio") {
+    realSpentWrapper.style.display = "block";
+    const realSpentVal = (movement.realSpent !== undefined && movement.realSpent !== null) ? movement.realSpent : movement.value;
+    document.getElementById("note-detail-real-spent").textContent = formatCurrency(realSpentVal);
+  } else {
+    realSpentWrapper.style.display = "none";
+  }
+  
+  document.getElementById("note-detail-reason").textContent = movement.reason;
+
+  // Set hidden inputs
+  document.getElementById("note-rubro-id").value = rubroName;
+  document.getElementById("note-mov-id").value = movId;
+  document.getElementById("note-id").value = ""; // Clear edit note ID
+  
+  // Set note form title and button text back to default
+  document.getElementById("note-form-title").textContent = "Nueva Nota";
+  const submitBtn = document.querySelector("#form-add-note button[type='submit']");
+  if (submitBtn) {
+    submitBtn.innerHTML = `<i class="fa-solid fa-plus"></i> Agregar Nota`;
+  }
+
+  // Set default note date to today
+  const today = new Date();
+  const dayStr = today.getDate() < 10 ? '0' + today.getDate() : today.getDate();
+  const monthStr = (today.getMonth() + 1) < 10 ? '0' + (today.getMonth() + 1) : (today.getMonth() + 1);
+  document.getElementById("note-date").value = `${today.getFullYear()}-${monthStr}-${dayStr}`;
+  document.getElementById("note-content").value = "";
+
+  // Show or hide the form and details panel based on readOnly
+  const noteForm = document.getElementById("form-add-note");
+  const detailsPanel = document.querySelector(".movement-details-panel");
+  const modalHeaderTitle = document.querySelector("#modal-movement-notes .modal-header h3");
+
+  if (readOnly) {
+    noteForm.style.display = "none";
+    if (detailsPanel) detailsPanel.style.display = "flex";
+    if (modalHeaderTitle) modalHeaderTitle.textContent = "Detalles del Registro";
+  } else {
+    noteForm.style.display = "block";
+    if (detailsPanel) detailsPanel.style.display = "none";
+    if (modalHeaderTitle) modalHeaderTitle.textContent = "Notas del Registro";
+  }
+
+  // Render Notes List
+  renderMovementNotesList(movement, rubroName, readOnly);
+
+  openModal("modal-movement-notes");
+}
+
+function renderMovementNotesList(movement, rubroName, readOnly) {
+  const container = document.getElementById("movement-notes-list");
+  container.innerHTML = "";
+
+  const notes = movement.notes || [];
+
+  if (notes.length === 0) {
+    container.innerHTML = `<p class="small text-muted text-center" style="padding: 10px 0;">No hay notas registradas para este movimiento.</p>`;
+    return;
+  }
+
+  notes.forEach(note => {
+    const item = document.createElement("div");
+    item.className = "movement-note-item";
+    item.innerHTML = `
+      <div class="movement-note-header">
+        <span class="movement-note-date"><i class="fa-solid fa-calendar-day"></i> ${note.date}</span>
+        ${!readOnly ? `
+        <div style="display: flex; gap: 4px;">
+          <button class="btn-edit-note" data-note-id="${note.id}" data-rubro="${rubroName}" data-mov-id="${movement.id}" title="Editar nota" style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 2px;">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+          <button class="btn-delete-note" data-note-id="${note.id}" data-rubro="${rubroName}" data-mov-id="${movement.id}" title="Eliminar nota" style="background: transparent; border: none; color: var(--danger); cursor: pointer; padding: 2px;">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </div>
+        ` : ''}
+      </div>
+      <p class="movement-note-content">${note.content}</p>
+    `;
+    container.appendChild(item);
+  });
+}
+
+function handleSaveMovementNote(rubroName, movId, date, content, noteId) {
+  const period = getActivePeriod();
+  if (!period) return false;
+
+  const monthKey = state.activeMonthKey;
+  const monthData = period.months[monthKey];
+  
+  let movement;
+  if (rubroName === "4x1000") {
+    movement = monthData.tax4x1000.find(t => t.id === movId);
+  } else if (rubroName === "aporteFondo") {
+    movement = monthData.aportesFondo.find(a => a.id === movId);
+  } else {
+    const rubroMonthData = monthData.rubros[rubroName];
+    if (rubroMonthData) {
+      movement = rubroMonthData.movements.find(m => m.id === movId);
+    }
+  }
+
+  if (!movement) return false;
+
+  if (!movement.notes) {
+    movement.notes = [];
+  }
+
+  if (noteId) {
+    // EDIT MODE FOR NOTE
+    const note = movement.notes.find(n => n.id === noteId);
+    if (note) {
+      note.date = date;
+      note.content = content;
+    }
+  } else {
+    // ADD MODE FOR NOTE
+    const newNoteId = "note-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+    movement.notes.push({
+      id: newNoteId,
+      date,
+      content
+    });
+  }
+
+  // Sort notes by date
+  movement.notes.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  saveState();
+  return movement;
+}
+
+function handleDeleteMovementNote(rubroName, movId, noteId) {
+  const period = getActivePeriod();
+  if (!period) return false;
+
+  const monthKey = state.activeMonthKey;
+  const monthData = period.months[monthKey];
+  
+  let movement;
+  if (rubroName === "4x1000") {
+    movement = monthData.tax4x1000.find(t => t.id === movId);
+  } else if (rubroName === "aporteFondo") {
+    movement = monthData.aportesFondo.find(a => a.id === movId);
+  } else {
+    const rubroMonthData = monthData.rubros[rubroName];
+    if (rubroMonthData) {
+      movement = rubroMonthData.movements.find(m => m.id === movId);
+    }
+  }
+
+  if (!movement || !movement.notes) return false;
+
+  const idx = movement.notes.findIndex(n => n.id === noteId);
+  if (idx === -1) return false;
+
+  const noteData = movement.notes[idx];
+  
+  // Route note to trash!
+  state.trash.push({
+    id: "trash-" + Date.now() + "-" + Math.floor(Math.random()*1000),
+    type: "note",
+    deletedAt: new Date().toISOString(),
+    originalPeriodId: period.id,
+    originalMonthKey: monthKey,
+    originalRubroName: rubroName,
+    originalMovementId: movId,
+    data: noteData
+  });
+
+  movement.notes.splice(idx, 1);
+  saveState();
+  updateTrashBadge();
+  return movement;
+}
+
 // Add or edit manual 4x1000
 function handleSaveTax(date, value, reason, taxId) {
   const period = getActivePeriod();
@@ -1214,6 +1605,79 @@ function handleDeleteTax(taxId) {
   );
 }
 
+// Add or edit manual Aporte al Fondo
+function handleSaveFund(date, value, reason, fundId) {
+  const period = getActivePeriod();
+  if (!period) return false;
+
+  const monthKey = state.activeMonthKey;
+  const monthData = period.months[monthKey];
+
+  if (!monthData.aportesFondo) {
+    monthData.aportesFondo = [];
+  }
+
+  if (fundId) {
+    // EDIT MODE
+    const idx = monthData.aportesFondo.findIndex(a => a.id === fundId);
+    if (idx === -1) return false;
+    
+    monthData.aportesFondo[idx].date = date;
+    monthData.aportesFondo[idx].value = value;
+    monthData.aportesFondo[idx].reason = reason;
+  } else {
+    // ADD MODE
+    const newId = "fund-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+    monthData.aportesFondo.push({
+      id: newId,
+      date,
+      value,
+      reason,
+      notes: []
+    });
+  }
+
+  monthData.aportesFondo.sort((a, b) => new Date(a.date) - new Date(b.date));
+  saveState();
+  return true;
+}
+
+// Delete Aporte al Fondo (routed to trash)
+function handleDeleteFund(fundId) {
+  const period = getActivePeriod();
+  if (!period) return;
+
+  const monthKey = state.activeMonthKey;
+  const monthData = period.months[monthKey];
+  const idx = monthData.aportesFondo.findIndex(a => a.id === fundId);
+  if (idx === -1) return;
+
+  const fundData = monthData.aportesFondo[idx];
+
+  showConfirmModal(
+    `<i class="fa-solid fa-trash-can text-danger"></i> Eliminar Aporte al Fondo`,
+    `¿Desea enviar a la papelera el aporte al fondo de "${fundData.reason}" por ${formatCurrency(fundData.value)}?`,
+    `Se guardará en la papelera para poder restaurarlo después.`,
+    () => {
+      monthData.aportesFondo.splice(idx, 1);
+
+      // Route to trash
+      state.trash.push({
+        id: "trash-" + Date.now() + "-" + Math.floor(Math.random()*1000),
+        type: "aporteFondo",
+        deletedAt: new Date().toISOString(),
+        originalPeriodId: period.id,
+        originalMonthKey: monthKey,
+        data: fundData
+      });
+
+      saveState();
+      renderMovementsTab();
+      updateTrashBadge();
+    }
+  );
+}
+
 // Update Annual budget for a rubro
 function handleUpdateAnnualBudget(rubroName, value) {
   const period = getActivePeriod();
@@ -1253,6 +1717,7 @@ function updateSummaryTotals() {
   totalRemEl.className = `text-right ${totalRemaining >= 0 ? 'val-positive' : 'val-negative'}`;
 
   renderMonthlyFlowSummary(period);
+  renderFundSummaryTable(period);
 }
 
 function handleUpdateMonthlyBudget(rubroName, value) {
@@ -1379,8 +1844,8 @@ document.addEventListener("DOMContentLoaded", () => {
   if (loginForm) {
     loginForm.addEventListener("submit", (e) => {
       e.preventDefault();
-      const userVal = document.getElementById("login-username").value;
-      const passVal = document.getElementById("login-password").value;
+      const userVal = document.getElementById("login-username").value.trim();
+      const passVal = document.getElementById("login-password").value.trim();
       handleLogin(userVal, passVal);
     });
   }
@@ -1487,8 +1952,32 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("rubros-summary-body").addEventListener("input", (e) => {
     if (e.target.classList.contains("annual-budget-input")) {
       const rubro = e.target.getAttribute("data-rubro");
-      const val = parseNumeric(e.target.value);
-      handleUpdateAnnualBudget(rubro, val);
+      
+      // Save cursor position
+      let selectionStart = e.target.selectionStart;
+      let originalLength = e.target.value.length;
+      
+      // Remove all non-digits to get raw value
+      let rawVal = e.target.value.replace(/\D/g, "");
+      
+      if (rawVal === "") {
+        e.target.value = "";
+        handleUpdateAnnualBudget(rubro, 0);
+        return;
+      }
+      
+      const numericVal = parseInt(rawVal, 10);
+      
+      // Format numeric value with dots
+      const formatted = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(numericVal);
+      e.target.value = formatted;
+      
+      // Restore cursor position
+      let newLength = formatted.length;
+      let cursorPosition = selectionStart + (newLength - originalLength);
+      e.target.setSelectionRange(cursorPosition, cursorPosition);
+      
+      handleUpdateAnnualBudget(rubro, numericVal);
     }
   });
 
@@ -1738,6 +2227,30 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // Open Modal: Movement Notes (either by clicking the Notes button or the row itself)
+  document.getElementById("month-rubros-container").addEventListener("click", (e) => {
+    // Check if clicked notes button
+    const notesBtn = e.target.closest(".btn-notes-movement-trigger");
+    if (notesBtn) {
+      e.stopPropagation();
+      const rubro = notesBtn.getAttribute("data-rubro");
+      const movId = notesBtn.getAttribute("data-mov-id");
+      handleOpenMovementNotes(rubro, movId, false);
+      return;
+    }
+
+    // Check if clicked row itself, but ignore if clicked other action buttons (edit / delete)
+    const row = e.target.closest(".movement-row");
+    if (row) {
+      if (e.target.closest("button") || e.target.closest("a")) {
+        return; 
+      }
+      const rubro = row.getAttribute("data-rubro");
+      const movId = row.getAttribute("data-mov-id");
+      handleOpenMovementNotes(rubro, movId, true);
+    }
+  });
+
   // Open Modal: Add Tax (4x1000)
   document.getElementById("btn-add-tax").addEventListener("click", () => {
     const period = getActivePeriod();
@@ -1762,7 +2275,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Open Modal: Edit Tax (4x1000)
-  document.querySelector(".bank-column").addEventListener("click", (e) => {
+  document.getElementById("sec-tax").addEventListener("click", (e) => {
     const btn = e.target.closest(".btn-edit-tax-trigger");
     if (btn) {
       const taxId = btn.getAttribute("data-tax-id");
@@ -1807,6 +2320,117 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // Open notes/details for bank taxes
+  document.getElementById("month-tax-body").addEventListener("click", (e) => {
+    const notesBtn = e.target.closest(".btn-notes-movement-trigger");
+    if (notesBtn) {
+      e.stopPropagation();
+      const movId = notesBtn.getAttribute("data-mov-id");
+      handleOpenMovementNotes("4x1000", movId, false);
+      return;
+    }
+
+    const row = e.target.closest(".movement-row");
+    if (row) {
+      if (e.target.closest("button") || e.target.closest("a")) {
+        return; 
+      }
+      const movId = row.getAttribute("data-mov-id");
+      handleOpenMovementNotes("4x1000", movId, true);
+    }
+  });
+
+  // Open Modal: Add Aporte al Fondo
+  document.getElementById("btn-add-fund-aporte").addEventListener("click", () => {
+    const period = getActivePeriod();
+    const monthData = period.months[state.activeMonthKey];
+
+    document.getElementById("fund-modal-title").textContent = "Registrar Aporte al Fondo";
+    document.getElementById("btn-submit-fund").textContent = "Registrar Aporte";
+    
+    document.getElementById("fund-id").value = ""; // Empty = Add Mode
+
+    const currentDay = new Date().getDate();
+    const dayStr = currentDay < 10 ? '0' + currentDay : currentDay;
+    const monthIndex = MONTHS_ORDER.findIndex(m => m.key === state.activeMonthKey);
+    const calendarMonth = (monthIndex + 4) % 12 + 1;
+    const calMonthStr = calendarMonth < 10 ? '0' + calendarMonth : calendarMonth;
+
+    document.getElementById("fund-date").value = `${monthData.year}-${calMonthStr}-${dayStr}`;
+    document.getElementById("fund-value").value = "";
+    document.getElementById("fund-reason").value = "";
+    
+    openModal("modal-add-fund");
+  });
+
+  // Edit/Delete/Notes clicks on Fund Contributions
+  document.getElementById("month-fund-body").addEventListener("click", (e) => {
+    // 1. Edit Aporte
+    const btnEdit = e.target.closest(".btn-edit-fund-trigger");
+    if (btnEdit) {
+      e.stopPropagation();
+      const fundId = btnEdit.getAttribute("data-fund-id");
+      const period = getActivePeriod();
+      const monthData = period.months[state.activeMonthKey];
+      const aporte = monthData.aportesFondo.find(a => a.id === fundId);
+      if (!aporte) return;
+
+      document.getElementById("fund-modal-title").textContent = "Editar Aporte al Fondo";
+      document.getElementById("btn-submit-fund").textContent = "Guardar Cambios";
+
+      document.getElementById("fund-id").value = fundId; // Filled = Edit Mode
+      
+      document.getElementById("fund-date").value = aporte.date;
+      document.getElementById("fund-value").value = aporte.value;
+      document.getElementById("fund-reason").value = aporte.reason;
+
+      openModal("modal-add-fund");
+      return;
+    }
+
+    // 2. Delete Aporte
+    const btnDelete = e.target.closest(".btn-delete-fund-trigger");
+    if (btnDelete) {
+      e.stopPropagation();
+      const fundId = btnDelete.getAttribute("data-fund-id");
+      handleDeleteFund(fundId);
+      return;
+    }
+
+    // 3. Notes Button Click
+    const btnNotes = e.target.closest(".btn-notes-movement-trigger");
+    if (btnNotes) {
+      e.stopPropagation();
+      const movId = btnNotes.getAttribute("data-mov-id");
+      handleOpenMovementNotes("aporteFondo", movId, false);
+      return;
+    }
+
+    // 4. Row Click (Read-only notes/details)
+    const row = e.target.closest(".movement-row");
+    if (row) {
+      if (e.target.closest("button") || e.target.closest("a")) {
+        return; 
+      }
+      const movId = row.getAttribute("data-mov-id");
+      handleOpenMovementNotes("aporteFondo", movId, true);
+    }
+  });
+
+  // Confirm Add/Edit Aporte al Fondo
+  document.getElementById("form-add-fund").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const date = document.getElementById("fund-date").value;
+    const value = parseNumeric(document.getElementById("fund-value").value);
+    const reason = document.getElementById("fund-reason").value;
+    const fundId = document.getElementById("fund-id").value;
+
+    if (handleSaveFund(date, value, reason, fundId)) {
+      closeModal();
+      renderMovementsTab();
+    }
+  });
+
   // Recycle Bin triggers: Restore / Permanent Delete
   document.getElementById("trash-items-list").addEventListener("click", (e) => {
     const btnRestore = e.target.closest(".btn-restore-trash");
@@ -1826,6 +2450,112 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btn-empty-trash").addEventListener("click", () => {
     if (state.trash.length > 0) {
       emptyTrash();
+    }
+  });
+
+  // Submit new note form
+  document.getElementById("form-add-note").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const rubroName = document.getElementById("note-rubro-id").value;
+    const movId = document.getElementById("note-mov-id").value;
+    const noteId = document.getElementById("note-id").value;
+    const date = document.getElementById("note-date").value;
+    const content = document.getElementById("note-content").value;
+
+    const updatedMov = handleSaveMovementNote(rubroName, movId, date, content, noteId);
+    if (updatedMov) {
+      document.getElementById("note-id").value = "";
+      document.getElementById("note-content").value = "";
+      document.getElementById("note-form-title").textContent = "Nueva Nota";
+      const submitBtn = document.querySelector("#form-add-note button[type='submit']");
+      if (submitBtn) {
+        submitBtn.innerHTML = `<i class="fa-solid fa-plus"></i> Agregar Nota`;
+      }
+      renderMovementNotesList(updatedMov, rubroName, false);
+    }
+  });
+
+  // Notes history click delegation (Edit Note / Delete Note)
+  document.getElementById("movement-notes-list").addEventListener("click", (e) => {
+    // 1. Edit Note
+    const btnEdit = e.target.closest(".btn-edit-note");
+    if (btnEdit) {
+      e.stopPropagation();
+      const noteId = btnEdit.getAttribute("data-note-id");
+      const rubroName = btnEdit.getAttribute("data-rubro");
+      const movId = btnEdit.getAttribute("data-mov-id");
+      
+      const period = getActivePeriod();
+      const monthData = period.months[state.activeMonthKey];
+      let movement;
+      if (rubroName === "4x1000") {
+        movement = monthData.tax4x1000.find(t => t.id === movId);
+      } else if (rubroName === "aporteFondo") {
+        movement = monthData.aportesFondo.find(a => a.id === movId);
+      } else {
+        movement = monthData.rubros[rubroName]?.movements.find(m => m.id === movId);
+      }
+      
+      if (movement && movement.notes) {
+        const note = movement.notes.find(n => n.id === noteId);
+        if (note) {
+          document.getElementById("note-id").value = noteId;
+          document.getElementById("note-date").value = note.date;
+          document.getElementById("note-content").value = note.content;
+          
+          document.getElementById("note-form-title").textContent = "Editar Nota";
+          const submitBtn = document.querySelector("#form-add-note button[type='submit']");
+          if (submitBtn) {
+            submitBtn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Guardar Cambios`;
+          }
+        }
+      }
+      return;
+    }
+
+    // 2. Delete Note
+    const btnDelete = e.target.closest(".btn-delete-note");
+    if (btnDelete) {
+      e.stopPropagation();
+      const noteId = btnDelete.getAttribute("data-note-id");
+      const rubroName = btnDelete.getAttribute("data-rubro");
+      const movId = btnDelete.getAttribute("data-mov-id");
+
+      showConfirmModal(
+        `<i class="fa-solid fa-trash-can text-danger"></i> Eliminar Nota`,
+        `¿Está seguro de enviar esta nota a la papelera?`,
+        `Podrás recuperarla en cualquier momento desde la pestaña Papelera.`,
+        () => {
+          const updatedMov = handleDeleteMovementNote(rubroName, movId, noteId);
+          if (updatedMov) {
+            renderMovementNotesList(updatedMov, rubroName, false);
+          }
+        }
+      );
+    }
+  });
+
+  // Shared Sub-navigation Toggling (for both Resumen and Movimientos tabs)
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest(".btn-subnav");
+    if (btn) {
+      const tabPane = btn.closest(".tab-pane");
+      if (!tabPane) return;
+      
+      const targetId = btn.getAttribute("data-target");
+      
+      // Update only buttons in the same tab pane
+      tabPane.querySelectorAll(".btn-subnav").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      
+      // Update only content panels in the same tab pane
+      tabPane.querySelectorAll(".subnav-section-content").forEach(panel => {
+        panel.classList.remove("active");
+      });
+      const targetPanel = document.getElementById(targetId);
+      if (targetPanel) {
+        targetPanel.classList.add("active");
+      }
     }
   });
 });

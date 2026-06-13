@@ -143,68 +143,118 @@
           <!-- ================= TAB 1: RESUMEN ================= -->
           <div id="summary-section" class="tab-pane active">
             
-            <!-- Rubros Annual Table Card -->
-            <div class="data-card">
-              <div class="card-header">
-                <h3><i class="fa-solid fa-table-list"></i> Tabla General de Rubros</h3>
-                <span class="info-tooltip" title="Los presupuestos iniciales se guardan automáticamente al escribirlos en la tabla.">
-                  <i class="fa-solid fa-circle-info"></i> Edición de Presupuesto Anual
-                </span>
-              </div>
-              <div class="table-responsive">
-                <table id="table-rubros-summary" class="data-table">
-                  <thead>
-                    <tr>
-                      <th>Rubro</th>
-                      <th class="text-right">Presupuesto Anual</th>
-                      <th class="text-right">Gasto Real (Resumen)</th>
-                      <th class="text-right">Dinero Sobrante</th>
-                    </tr>
-                  </thead>
-                  <tbody id="rubros-summary-body">
-                    <!-- Dynamic rows go here -->
-                  </tbody>
-                  <tfoot>
-                    <tr class="total-row">
-                      <td>TOTAL GENERAL</td>
-                      <td class="text-right" id="total-annual-budget">$0.00</td>
-                      <td class="text-right" id="total-annual-spent">$0.00</td>
-                      <td class="text-right" id="total-annual-remaining">$0.00</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
+            <!-- Sub-navigation buttons for Summary sections -->
+            <div class="subnav-buttons">
+              <button type="button" class="btn-subnav active" data-target="sec-summary-rubros">
+                <i class="fa-solid fa-table-list"></i> Tabla General de Rubros
+              </button>
+              <button type="button" class="btn-subnav" data-target="sec-summary-flow">
+                <i class="fa-solid fa-chart-line"></i> Resumen de Flujo Mensual
+              </button>
+              <button type="button" class="btn-subnav" data-target="sec-summary-funds">
+                <i class="fa-solid fa-piggy-bank"></i> Aportes al Fondo Mensuales
+              </button>
             </div>
 
-            <!-- Monthly Summary Card -->
-            <div class="data-card margin-top">
-              <div class="card-header">
-                <h3><i class="fa-solid fa-chart-line"></i> Resumen de Flujo Mensual</h3>
-                <p class="card-desc">Comparativa del presupuesto solicitado y gastado mes a mes en el año.</p>
+            <div class="summary-sections-wrapper">
+              
+              <!-- Section 1: Rubros Annual Table Card -->
+              <div id="sec-summary-rubros" class="subnav-section-content active">
+                <div class="data-card">
+                  <div class="card-header">
+                    <h3><i class="fa-solid fa-table-list"></i> Tabla General de Rubros</h3>
+                    <span class="info-tooltip" title="Los presupuestos iniciales se guardan automáticamente al escribirlos en la tabla.">
+                      <i class="fa-solid fa-circle-info"></i> Edición de Presupuesto Anual
+                    </span>
+                  </div>
+                  <div class="table-responsive">
+                    <table id="table-rubros-summary" class="data-table">
+                      <thead>
+                        <tr>
+                          <th>Rubro</th>
+                          <th class="text-right">Presupuesto Anual</th>
+                          <th class="text-right">Gasto Real (Resumen)</th>
+                          <th class="text-right">Dinero Sobrante</th>
+                        </tr>
+                      </thead>
+                      <tbody id="rubros-summary-body">
+                        <!-- Dynamic rows go here -->
+                      </tbody>
+                      <tfoot>
+                        <tr class="total-row">
+                          <td>TOTAL GENERAL</td>
+                          <td class="text-right" id="total-annual-budget">$0.00</td>
+                          <td class="text-right" id="total-annual-spent">$0.00</td>
+                          <td class="text-right" id="total-annual-remaining">$0.00</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
               </div>
-              <div class="table-responsive">
-                <table id="table-monthly-summary" class="data-table">
-                  <thead>
-                    <tr>
-                      <th>Mes</th>
-                      <th class="text-right">Dinero Solicitado (Asignado)</th>
-                      <th class="text-right">Dinero Gastado (Envíos + 4x1000)</th>
-                      <th class="text-right">Balance Mensual</th>
-                    </tr>
-                  </thead>
-                  <tbody id="monthly-summary-body">
-                    <!-- Dynamic rows for Mayo to Abril -->
-                  </tbody>
-                  <tfoot>
-                    <tr class="total-row">
-                      <td>TOTAL DEL PERÍODO</td>
-                      <td class="text-right" id="total-monthly-requested">$0.00</td>
-                      <td class="text-right" id="total-monthly-spent">$0.00</td>
-                      <td class="text-right" id="total-monthly-difference">$0.00</td>
-                    </tr>
-                  </tfoot>
-                </table>
+
+              <!-- Section 2: Monthly Summary Card -->
+              <div id="sec-summary-flow" class="subnav-section-content">
+                <div class="data-card">
+                  <div class="card-header">
+                    <h3><i class="fa-solid fa-chart-line"></i> Resumen de Flujo Mensual</h3>
+                    <p class="card-desc">Comparativa del presupuesto solicitado y gastado mes a mes en el año.</p>
+                  </div>
+                  <div class="table-responsive">
+                    <table id="table-monthly-summary" class="data-table">
+                      <thead>
+                        <tr>
+                          <th>Mes</th>
+                          <th class="text-right">Dinero Solicitado (Asignado)</th>
+                          <th class="text-right">Dinero Gastado (Envíos + 4x1000)</th>
+                          <th class="text-right">Balance Mensual</th>
+                        </tr>
+                      </thead>
+                      <tbody id="monthly-summary-body">
+                        <!-- Dynamic rows for Mayo to Abril -->
+                      </tbody>
+                      <tfoot>
+                        <tr class="total-row">
+                          <td>TOTAL DEL PERÍODO</td>
+                          <td class="text-right" id="total-monthly-requested">$0.00</td>
+                          <td class="text-right" id="total-monthly-spent">$0.00</td>
+                          <td class="text-right" id="total-monthly-difference">$0.00</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
               </div>
+
+              <!-- Section 3: Fund Contributions Summary Card -->
+              <div id="sec-summary-funds" class="subnav-section-content">
+                <div class="data-card">
+                  <div class="card-header">
+                    <h3><i class="fa-solid fa-piggy-bank"></i> Aportes al Fondo Mensuales</h3>
+                    <p class="card-desc">Resumen de los aportes realizados al fondo mes a mes en el año.</p>
+                  </div>
+                  <div class="table-responsive">
+                    <table id="table-fund-summary" class="data-table">
+                      <thead>
+                        <tr>
+                          <th>Mes</th>
+                          <th class="text-right">Total Aportes al Fondo</th>
+                        </tr>
+                      </thead>
+                      <tbody id="fund-summary-body">
+                        <!-- Dynamic rows of fund contributions monthly summary -->
+                      </tbody>
+                      <tfoot>
+                        <tr class="total-row">
+                          <td>TOTAL APORTES DEL PERÍODO</td>
+                          <td class="text-right val-positive" id="total-annual-funds">$0.00</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
             </div>
             
           </div>
@@ -249,19 +299,41 @@
 
                 <div class="metric-card remaining">
                   <div class="metric-icon"><i class="fa-solid fa-scale-balanced"></i></div>
-                  <div class="metric-info">
+                  <div class="metric-info" style="flex: 1;">
                     <span class="metric-label">Dinero Sobrante</span>
-                    <h4 class="metric-value" id="month-metric-remaining">$0.00</h4>
+                    <div class="remaining-values-stack" style="display: flex; flex-direction: column; gap: 4px; margin: 4px 0;">
+                      <div class="remaining-value-item" style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+                        <span class="sub-label" style="font-size: 0.75rem; color: var(--text-muted);">Sin aportes:</span>
+                        <h4 class="metric-value-sm" id="month-metric-remaining" style="font-size: 1.15rem; font-weight: 700;">$0.00</h4>
+                      </div>
+                      <div class="remaining-value-item" style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+                        <span class="sub-label" style="font-size: 0.75rem; color: var(--text-muted);">Con aportes:</span>
+                        <h4 class="metric-value-sm text-success" id="month-metric-remaining-with-fund" style="font-size: 1.15rem; font-weight: 700; color: var(--success);">$0.00</h4>
+                      </div>
+                    </div>
                     <p class="metric-desc">Balance disponible del mes</p>
                   </div>
                 </div>
               </div>
 
-              <!-- Split Layout: Rubros and 4x1000 -->
-              <div class="movements-split-layout">
+              <!-- Sub-navigation buttons for Movements sections -->
+              <div class="subnav-buttons">
+                <button type="button" class="btn-subnav active" data-target="sec-rubros">
+                  <i class="fa-solid fa-box-archive"></i> Rubros en Curso
+                </button>
+                <button type="button" class="btn-subnav" data-target="sec-tax">
+                  <i class="fa-solid fa-building-columns"></i> Cobros Bancarios (4x1000)
+                </button>
+                <button type="button" class="btn-subnav" data-target="sec-fund">
+                  <i class="fa-solid fa-piggy-bank"></i> Aportes al Fondo
+                </button>
+              </div>
+
+              <!-- Movements Panels Wrapper -->
+              <div class="movements-sections-wrapper">
                 
-                <!-- Left Side: Rubros list of the month -->
-                <div class="rubros-column">
+                <!-- Section 1: Rubros list of the month -->
+                <div id="sec-rubros" class="subnav-section-content active">
                   <div class="column-header">
                     <h4><i class="fa-solid fa-box-archive"></i> Rubros en Curso este Mes</h4>
                     <button id="btn-add-month-rubro" class="btn btn-success btn-sm">
@@ -274,8 +346,8 @@
                   </div>
                 </div>
 
-                <!-- Right Side: Bank Charges (4 x 1000) -->
-                <div class="bank-column">
+                <!-- Section 2: Bank Charges (4 x 1000) -->
+                <div id="sec-tax" class="subnav-section-content">
                   <div class="data-card bank-charge-card">
                     <div class="card-header bank-header">
                       <h4><i class="fa-solid fa-building-columns"></i> Cobros Bancarios (4 x 1000)</h4>
@@ -302,6 +374,41 @@
                           </thead>
                           <tbody id="month-tax-body">
                             <!-- Dynamic rows of 4x1000 -->
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Section 3: Aportes al Fondo Card -->
+                <div id="sec-fund" class="subnav-section-content">
+                  <div class="data-card fund-charge-card">
+                    <div class="card-header fund-header">
+                      <h4><i class="fa-solid fa-piggy-bank"></i> Aportes al Fondo</h4>
+                      <button id="btn-add-fund-aporte" class="btn btn-secondary btn-sm">
+                        <i class="fa-solid fa-plus"></i> Registrar Aporte
+                      </button>
+                    </div>
+                    
+                    <div class="fund-card-body">
+                      <div class="fund-metric">
+                        <span class="fund-label">Total Aportes del Mes:</span>
+                        <span class="fund-value text-success" id="month-fund-total">$0.00</span>
+                      </div>
+                      
+                      <div class="table-responsive">
+                        <table class="bank-table fund-table">
+                          <thead>
+                            <tr>
+                              <th>Fecha</th>
+                              <th>Motivo</th>
+                              <th class="text-right">Valor</th>
+                              <th class="text-center">Acciones</th>
+                            </tr>
+                          </thead>
+                          <tbody id="month-fund-body">
+                            <!-- Dynamic rows of Aportes al Fondo -->
                           </tbody>
                         </table>
                       </div>
@@ -531,6 +638,109 @@
         <button type="submit" class="btn btn-primary" id="btn-submit-tax">Registrar Cobro</button>
       </div>
     </form>
+  </div>
+
+  <!-- Modal: Registrar/Editar Aporte al Fondo -->
+  <div class="modal" id="modal-add-fund">
+    <div class="modal-header">
+      <h3 id="fund-modal-title">Registrar Aporte al Fondo</h3>
+      <button class="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form id="form-add-fund">
+      <input type="hidden" id="fund-id"> <!-- Empty in add mode, filled in edit mode -->
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="fund-date">Fecha:</label>
+          <input type="date" id="fund-date" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label for="fund-value">Valor del Aporte ($):</label>
+          <input type="number" id="fund-value" class="form-control" min="0" step="any" placeholder="Ej. 100000" required>
+        </div>
+        <div class="form-group">
+          <label for="fund-reason">Motivo / Detalle:</label>
+          <input type="text" id="fund-reason" class="form-control" placeholder="Ej. Aporte mensual de cooperante" required>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-close-modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-fund">Registrar Aporte</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Modal: Detalles y Notas del Movimiento -->
+  <div class="modal" id="modal-movement-notes">
+    <div class="modal-header">
+      <h3>Detalles y Notas del Movimiento</h3>
+      <button class="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" style="gap: 16px;">
+      <!-- Movement Info Panel -->
+      <div class="movement-details-panel">
+        <div class="detail-row">
+          <span class="detail-label">Rubro</span>
+          <strong id="note-detail-rubro">-</strong>
+        </div>
+        <div class="detail-grid">
+          <div class="detail-row">
+            <span class="detail-label">Fecha</span>
+            <span id="note-detail-date">-</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Tipo</span>
+            <span id="note-detail-type">-</span>
+          </div>
+        </div>
+        <div class="detail-grid">
+          <div class="detail-row">
+            <span class="detail-label">Valor</span>
+            <strong id="note-detail-value" class="val-positive">-</strong>
+          </div>
+          <div class="detail-row" id="note-detail-real-spent-wrapper" style="display:none;">
+            <span class="detail-label">Gasto Real</span>
+            <strong id="note-detail-real-spent">-</strong>
+          </div>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Motivo</span>
+          <p id="note-detail-reason" class="detail-desc">-</p>
+        </div>
+      </div>
+
+      <!-- Notes List -->
+      <div class="notes-section">
+        <h5><i class="fa-solid fa-clipboard-list" style="color: var(--primary);"></i> Historial de Notas</h5>
+        <div id="movement-notes-list" class="movement-notes-list">
+          <!-- Dynamic notes list -->
+        </div>
+      </div>
+
+      <!-- Add Note Form -->
+      <form id="form-add-note" class="form-add-note">
+        <input type="hidden" id="note-rubro-id">
+        <input type="hidden" id="note-mov-id">
+        <input type="hidden" id="note-id"> <!-- Empty in add mode, filled in edit mode -->
+        
+        <h5 id="note-form-title">Nueva Nota</h5>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="note-date">Fecha de la Nota:</label>
+            <input type="date" id="note-date" class="form-control" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="note-content">Contenido de la Nota:</label>
+          <textarea id="note-content" class="form-control" rows="2" placeholder="Escriba aquí la nota o comentario..." required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm btn-full-width" style="margin-top: 8px;">
+          <i class="fa-solid fa-plus"></i> Agregar Nota
+        </button>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary btn-close-modal">Cerrar</button>
+    </div>
   </div>
 
   <!-- MODAL: CONFIRMACIÓN PERSONALIZADA DE ELIMINACIÓN / PAPELERA -->

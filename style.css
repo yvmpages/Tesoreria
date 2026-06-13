@@ -837,6 +837,169 @@ body {
   background: var(--danger-bg);
 }
 
+.btn-notes-item {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  opacity: 0.7;
+  transition: var(--transition-fast);
+}
+
+.btn-notes-item:hover {
+  opacity: 1;
+  color: var(--info);
+  background: rgba(6, 182, 212, 0.1);
+}
+
+.movement-row {
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.movement-row:hover {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Modal de Notas y Detalles de Movimientos */
+.movement-details-panel {
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid var(--panel-border);
+  padding: 16px;
+  border-radius: var(--border-radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.detail-row {
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.detail-desc {
+  background: rgba(15, 23, 42, 0.2);
+  padding: 6px 10px;
+  border-radius: var(--border-radius-sm);
+  margin-top: 4px;
+  font-size: 0.85rem;
+  border: 1px solid var(--border-light);
+  white-space: pre-wrap;
+}
+
+.notes-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.notes-section h5 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.movement-notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding-right: 4px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--border-radius-sm);
+  background: rgba(15, 23, 42, 0.2);
+  padding: 8px;
+}
+
+.movement-note-item {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-light);
+  padding: 10px 12px;
+  border-radius: var(--border-radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  position: relative;
+}
+
+.movement-note-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.movement-note-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.movement-note-date {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.movement-note-content {
+  color: var(--text-main);
+  white-space: pre-wrap;
+  line-height: 1.4;
+}
+
+.btn-delete-note {
+  background: transparent;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 0.8rem;
+  opacity: 0.5;
+  transition: var(--transition-fast);
+  padding: 2px;
+}
+
+.btn-delete-note:hover {
+  opacity: 1;
+  background: var(--danger-bg);
+  border-radius: 3px;
+}
+
+.form-add-note {
+  background: rgba(15, 23, 42, 0.25);
+  border: 1px solid var(--border-light);
+  padding: 14px;
+  border-radius: var(--border-radius-md);
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.form-add-note h5 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 2px;
+  color: var(--text-main);
+}
+
 .rubro-budget-settings {
   display: flex;
   justify-content: space-between;
@@ -994,6 +1157,102 @@ body {
 }
 
 /* ==========================================================================
+   FUND CARD APORTES SPECIFIC
+   ========================================================================== */
+.fund-charge-card {
+  border-left: 4px solid var(--success);
+  background: rgba(23, 31, 52, 0.45);
+}
+
+.fund-header {
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.fund-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.3);
+  padding: 12px;
+  border-radius: var(--border-radius-sm);
+  margin-bottom: 16px;
+  border: 1px solid var(--border-light);
+}
+
+.fund-label {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.fund-value {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--success);
+}
+
+/* ==========================================================================
+   SUB-NAVIGATION TABS
+   ========================================================================== */
+.subnav-buttons {
+  display: flex;
+  gap: 12px;
+  margin: 10px 0 20px 0;
+  border-bottom: 1px solid var(--panel-border);
+  padding-bottom: 12px;
+}
+
+.btn-subnav {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--panel-border);
+  color: var(--text-muted);
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: var(--transition-fast);
+}
+
+.btn-subnav:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+}
+
+.btn-subnav.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+  box-shadow: 0 0 12px var(--primary-glow);
+}
+
+.subnav-section-content {
+  display: none;
+}
+
+.subnav-section-content.active {
+  display: block;
+  animation: fadeIn var(--transition-fast) ease-in-out;
+}
+
+@media (max-width: 600px) {
+  .subnav-buttons {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .btn-subnav {
+    flex: 1 1 auto;
+    font-size: 0.8rem;
+    padding: 6px 12px;
+    justify-content: center;
+  }
+}
+
+/* ==========================================================================
    TAB 3: PAPELERA DE RECICLAJE (TRASH PANEL)
    ========================================================================== */
 .trash-header-actions {
@@ -1067,6 +1326,18 @@ body {
   color: var(--info);
   background: rgba(6, 182, 212, 0.1);
   border-color: rgba(6, 182, 212, 0.2);
+}
+
+.trash-item-icon-box.type-fund {
+  color: var(--success);
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.trash-item-icon-box.type-note {
+  color: hsl(270, 89%, 65%);
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.2);
 }
 
 .trash-item-info {
@@ -1604,4 +1875,45 @@ body {
   background: var(--danger-bg);
   color: var(--danger-hover);
   border-color: rgba(244, 63, 94, 0.3);
+}
+
+/* Aportes al Fondo Styles */
+.fund-charge-card {
+  border-left: 4px solid var(--success);
+  background: rgba(23, 31, 52, 0.45);
+}
+
+.fund-header {
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.fund-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.3);
+  padding: 12px;
+  border-radius: var(--border-radius-sm);
+  margin-bottom: 16px;
+  border: 1px solid var(--border-light);
+}
+
+.fund-label {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.fund-value {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--success);
+}
+
+.trash-item-icon-box.type-note {
+  color: var(--info);
+  background: rgba(6, 182, 212, 0.1);
+  border-color: rgba(6, 182, 212, 0.2);
 }
