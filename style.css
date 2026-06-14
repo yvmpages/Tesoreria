@@ -1024,7 +1024,7 @@ body {
 }
 
 .budget-month-input {
-  width: 100px;
+  width: 120px;
   background: var(--input-bg);
   border: 1px solid var(--input-border);
   color: white;

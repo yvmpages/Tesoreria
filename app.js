@@ -660,17 +660,16 @@ function renderMonthRubrosList(monthData) {
     // Budget Settings Row
     const budgetSettings = document.createElement("div");
     budgetSettings.className = "rubro-budget-settings";
+    const formattedMonthlyBudget = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(rubroData.monthlyBudget || 0);
     budgetSettings.innerHTML = `
       <div class="budget-setter">
         <label for="budget-input-${rubroName.replace(/\s+/g, '-')}">Asignado:</label>
         <span class="currency-symbol">$</span>
-        <input type="number" 
+        <input type="text" 
                id="budget-input-${rubroName.replace(/\s+/g, '-')}"
                class="budget-month-input" 
                data-rubro="${rubroName}" 
-               value="${rubroData.monthlyBudget || 0}" 
-               step="any" 
-               min="0">
+               value="${formattedMonthlyBudget}">
       </div>
       <div class="rubro-card-stats">
         <div class="rubro-stat-item">
@@ -2008,8 +2007,32 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("month-rubros-container").addEventListener("input", (e) => {
     if (e.target.classList.contains("budget-month-input")) {
       const rubro = e.target.getAttribute("data-rubro");
-      const val = parseNumeric(e.target.value);
-      handleUpdateMonthlyBudget(rubro, val);
+      
+      // Save cursor position
+      let selectionStart = e.target.selectionStart;
+      let originalLength = e.target.value.length;
+      
+      // Remove all non-digits to get raw value
+      let rawVal = e.target.value.replace(/\D/g, "");
+      
+      if (rawVal === "") {
+        e.target.value = "";
+        handleUpdateMonthlyBudget(rubro, 0);
+        return;
+      }
+      
+      const numericVal = parseInt(rawVal, 10);
+      
+      // Format numeric value with dots
+      const formatted = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(numericVal);
+      e.target.value = formatted;
+      
+      // Restore cursor position
+      let newLength = formatted.length;
+      let cursorPosition = selectionStart + (newLength - originalLength);
+      e.target.setSelectionRange(cursorPosition, cursorPosition);
+      
+      handleUpdateMonthlyBudget(rubro, numericVal);
     }
   });
 
@@ -2036,20 +2059,41 @@ document.addEventListener("DOMContentLoaded", () => {
       select.appendChild(opt);
     });
 
-    document.getElementById("rubro-monthly-budget").value = 0;
+    document.getElementById("rubro-monthly-budget").value = "0";
     openModal("modal-add-rubro");
   });
 
   document.getElementById("form-add-rubro").addEventListener("submit", (e) => {
     e.preventDefault();
     const rubro = document.getElementById("rubro-select-input").value;
-    const budget = parseNumeric(document.getElementById("rubro-monthly-budget").value);
+    const rawVal = document.getElementById("rubro-monthly-budget").value.replace(/\D/g, "");
+    const budget = rawVal === "" ? 0 : parseInt(rawVal, 10);
     
     if (handleAddRubroToMonth(rubro, budget)) {
       closeModal();
       renderMovementsTab();
     }
   });
+
+  // Formatting for monthly budget input in modal
+  const rubroMonthlyBudgetInput = document.getElementById("rubro-monthly-budget");
+  if (rubroMonthlyBudgetInput) {
+    rubroMonthlyBudgetInput.addEventListener("input", (e) => {
+      let selectionStart = e.target.selectionStart;
+      let originalLength = e.target.value.length;
+      let rawVal = e.target.value.replace(/\D/g, "");
+      if (rawVal === "") {
+        e.target.value = "";
+        return;
+      }
+      const numericVal = parseInt(rawVal, 10);
+      const formatted = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(numericVal);
+      e.target.value = formatted;
+      let newLength = formatted.length;
+      let cursorPosition = selectionStart + (newLength - originalLength);
+      e.target.setSelectionRange(cursorPosition, cursorPosition);
+    });
+  }
 
   // Open Modal: Edit Rubro Category
   document.getElementById("month-rubros-container").addEventListener("click", (e) => {
