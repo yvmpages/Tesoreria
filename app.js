@@ -697,7 +697,6 @@ function renderMonthRubrosList(monthData) {
             <tr>
               <th>Fecha</th>
               <th>Detalle</th>
-              <th>Tipo</th>
               <th class="text-right">Valor</th>
               ${isSpecial ? `<th class="text-right">Gasto Real</th>` : ''}
               <th class="text-center">Acciones</th>
@@ -707,15 +706,12 @@ function renderMonthRubrosList(monthData) {
       `;
 
       rubroData.movements.forEach(m => {
-        const typeLabel = m.type === "envio" ? "Envío" : "Ingreso";
-        const typeClass = m.type === "envio" ? "val-negative" : "val-positive";
         const realSpentVal = (m.realSpent !== undefined && m.realSpent !== null) ? m.realSpent : m.value;
 
         tableHtml += `
           <tr class="movement-row" data-rubro="${rubroName}" data-mov-id="${m.id}">
             <td>${m.date}</td>
             <td title="${m.reason}">${m.reason.length > 25 ? m.reason.substring(0, 22) + '...' : m.reason}</td>
-            <td class="${typeClass}"><strong>${typeLabel}</strong></td>
             <td class="text-right font-weight-500">${formatCurrency(m.value)}</td>
             ${isSpecial ? `<td class="text-right font-weight-500 val-neutral">${m.type === 'envio' ? formatCurrency(realSpentVal) : '-'}</td>` : ''}
             <td class="text-center">
