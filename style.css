@@ -1920,3 +1920,28 @@ body {
   background: rgba(6, 182, 212, 0.1);
   border-color: rgba(6, 182, 212, 0.2);
 }
+
+/* Custom Rubros Table Inline Action Buttons */
+.btn-action-icon {
+  opacity: 0.5;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.btn-action-icon:hover {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+.trash-item-icon-box.type-summary-trash {
+  color: var(--success);
+  background: var(--success-bg);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.trash-item-icon-box.type-movements-trash {
+  color: var(--primary);
+  background: rgba(37, 99, 235, 0.15);
+  border-color: rgba(37, 99, 235, 0.25);
+}
+
+

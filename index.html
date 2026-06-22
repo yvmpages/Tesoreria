@@ -163,9 +163,14 @@
                 <div class="data-card">
                   <div class="card-header">
                     <h3><i class="fa-solid fa-table-list"></i> Tabla General de Rubros</h3>
-                    <span class="info-tooltip" title="Los presupuestos iniciales se guardan automáticamente al escribirlos en la tabla.">
-                      <i class="fa-solid fa-circle-info"></i> Edición de Presupuesto Anual
-                    </span>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                      <button id="btn-new-rubro-summary" type="button" class="btn btn-primary btn-sm btn-new-rubro-trigger">
+                        <i class="fa-solid fa-plus"></i> Nuevo rubro
+                      </button>
+                      <span class="info-tooltip" title="Los presupuestos iniciales se guardan automáticamente al escribirlos en la tabla.">
+                        <i class="fa-solid fa-circle-info"></i> Edición de Presupuesto Anual
+                      </span>
+                    </div>
                   </div>
                   <div class="table-responsive">
                     <table id="table-rubros-summary" class="data-table">
@@ -175,6 +180,7 @@
                           <th class="text-right">Presupuesto Anual</th>
                           <th class="text-right">Gasto Real (Resumen)</th>
                           <th class="text-right">Dinero Sobrante</th>
+                          <th class="text-center" style="width: 100px;">Acciones</th>
                         </tr>
                       </thead>
                       <tbody id="rubros-summary-body">
@@ -186,6 +192,7 @@
                           <td class="text-right" id="total-annual-budget">$0.00</td>
                           <td class="text-right" id="total-annual-spent">$0.00</td>
                           <td class="text-right" id="total-annual-remaining">$0.00</td>
+                          <td></td>
                         </tr>
                       </tfoot>
                     </table>
@@ -489,6 +496,55 @@
     </form>
   </div>
 
+  <!-- Modal: Crear Nuevo Rubro -->
+  <div class="modal" id="modal-create-rubro">
+    <div class="modal-header">
+      <h3>Nuevo rubro</h3>
+      <button class="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form id="form-create-rubro">
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="new-rubro-name">Nombre del rubro:</label>
+          <input type="text" id="new-rubro-name" class="form-control" placeholder="Ej. Gastos Médicos" required>
+        </div>
+        <div class="form-group form-check" style="display: flex; align-items: center; gap: 8px; margin-top: 12px;">
+          <input type="checkbox" id="new-rubro-is-caja" class="form-check-input" style="width: 20px; height: 20px; cursor: pointer;">
+          <label for="new-rubro-is-caja" class="form-check-label" style="cursor: pointer; font-size: 0.95rem;">¿Funciona como Caja? (Regla contable de Caja)</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-close-modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Crear rubro</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Modal: Editar Rubro Personalizado -->
+  <div class="modal" id="modal-edit-custom-rubro">
+    <div class="modal-header">
+      <h3>Editar Rubro</h3>
+      <button class="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form id="form-edit-custom-rubro">
+      <input type="hidden" id="edit-custom-rubro-old-name">
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="edit-custom-rubro-name">Nombre del rubro:</label>
+          <input type="text" id="edit-custom-rubro-name" class="form-control" required>
+        </div>
+        <div class="form-group form-check" style="display: flex; align-items: center; gap: 8px; margin-top: 12px;">
+          <input type="checkbox" id="edit-custom-rubro-is-caja" class="form-check-input" style="width: 20px; height: 20px; cursor: pointer;">
+          <label for="edit-custom-rubro-is-caja" class="form-check-label" style="cursor: pointer; font-size: 0.95rem;">¿Funciona como Caja? (Regla contable de Caja)</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-close-modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Guardar cambios</button>
+      </div>
+    </form>
+  </div>
+
   <!-- Modal: Agregar Rubro al Mes -->
   <div class="modal" id="modal-add-rubro">
     <div class="modal-header">
@@ -584,7 +640,7 @@
         <div class="special-rubro-box" id="special-rubro-fields" style="display: none;">
           <div class="special-box-header">
             <i class="fa-solid fa-circle-exclamation"></i>
-            <h5>Regla Contable Especial</h5>
+            <h5>Regla Contable de Caja</h5>
           </div>
           <p class="special-box-desc">
             Se contará el monto total entregado como gastado en el mes, pero en el Resumen Anual se computará el gasto real.

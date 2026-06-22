@@ -42,6 +42,18 @@ const MONTHS_ORDER = [
 // LocalStorage key
 const STORAGE_KEY = "tesoreria_app_state";
 
+function getAllRubros() {
+  if (!state || !state.rubros) return [];
+  return state.rubros.map(r => r.name);
+}
+
+function isCaja(rubroName) {
+  if (!rubroName) return false;
+  if (!state || !state.rubros) return false;
+  const r = state.rubros.find(x => x.name.toLowerCase() === rubroName.toLowerCase());
+  return r ? !!r.isCaja : false;
+}
+
 // ==========================================================================
 // APPLICATION STATE
 // ==========================================================================
@@ -50,7 +62,8 @@ let state = {
   periods: [],
   activePeriodId: null,
   activeMonthKey: "mayo",
-  trash: [] // Deleted elements storage
+  trash: [], // Deleted elements storage
+  rubros: [] // Unified rubros list
 };
 
 // ==========================================================================
@@ -103,7 +116,7 @@ function createEmptyPeriod(startYear) {
   const name = `Mayo ${startYear} - Abril ${endYear}`;
   
   const budgets = {};
-  PREDEFINED_RUBROS.forEach(rubro => {
+  getAllRubros().forEach(rubro => {
     budgets[rubro] = 0;
   });
 
@@ -131,6 +144,13 @@ function createEmptyPeriod(startYear) {
 
 function initializeDefaultState() {
   const currentYear = new Date().getFullYear();
+  state.rubros = [
+    ...PREDEFINED_RUBROS.map(name => ({
+      name: name,
+      isCaja: SPECIAL_RUBROS.includes(name)
+    }))
+  ];
+  state.customRubros = [];
   const defaultPeriod = createEmptyPeriod(currentYear);
   state.periods.push(defaultPeriod);
   state.activePeriodId = defaultPeriod.id;
@@ -139,11 +159,43 @@ function initializeDefaultState() {
   saveState();
 }
 
+function migrateState(s) {
+  if (!s.rubros || !Array.isArray(s.rubros) || s.rubros.length === 0) {
+    s.rubros = [
+      ...PREDEFINED_RUBROS.map(name => ({
+        name: name,
+        isCaja: SPECIAL_RUBROS.includes(name)
+      })),
+      ...(s.customRubros || []).map(r => {
+        if (typeof r === 'string') {
+          return { name: r, isCaja: false };
+        }
+        return r;
+      })
+    ];
+  }
+  // Remove duplicates in s.rubros case-insensitively
+  const uniqueRubros = [];
+  const seen = new Set();
+  s.rubros.forEach(r => {
+    const key = r.name.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      uniqueRubros.push(r);
+    }
+  });
+  s.rubros = uniqueRubros;
+  return s;
+}
+
 function loadState() {
   try {
     const rawData = localStorage.getItem(STORAGE_KEY);
     if (rawData) {
       state = JSON.parse(rawData);
+      
+      // Perform migration
+      state = migrateState(state);
       
       // Safety checks
       if (!state.periods || !Array.isArray(state.periods) || state.periods.length === 0) {
@@ -170,6 +222,17 @@ function loadState() {
       }
       if (!state.trash) {
         state.trash = [];
+      }
+      if (!state.customRubros) {
+        state.customRubros = [];
+      } else {
+        // Migrate legacy string array to object array
+        state.customRubros = state.customRubros.map(r => {
+          if (typeof r === 'string') {
+            return { name: r, isCaja: false };
+          }
+          return r;
+        });
       }
     } else {
       initializeDefaultState();
@@ -287,7 +350,7 @@ function calculateAnnualRubroStats(period, rubroName) {
   let totalIncome = 0;
   let totalSpentReal = 0; 
 
-  const isSpecial = SPECIAL_RUBROS.includes(rubroName);
+  const isSpecial = isCaja(rubroName);
 
   MONTHS_ORDER.forEach(m => {
     const monthData = period.months[m.key];
@@ -405,7 +468,7 @@ function renderSummaryTab() {
   let totalSpent = 0;
   let totalRemaining = 0;
 
-  PREDEFINED_RUBROS.forEach(rubro => {
+  getAllRubros().forEach(rubro => {
     const stats = calculateAnnualRubroStats(period, rubro);
     
     totalBudget += stats.initialBudget;
@@ -416,10 +479,11 @@ function renderSummaryTab() {
     const tr = document.createElement("tr");
     
     const tdName = document.createElement("td");
-    tdName.innerHTML = `<strong>${rubro}</strong>`;
-    if (SPECIAL_RUBROS.includes(rubro)) {
-      tdName.innerHTML += ` <span class="special-tag" title="Monto entregado en el mes, pero gasto real anual.">Especial</span>`;
+    let nameHtml = `<strong>${rubro}</strong>`;
+    if (isCaja(rubro)) {
+      nameHtml += ` <span class="special-tag" title="Monto entregado completo en el mes, gasto real anual.">Caja</span>`;
     }
+    tdName.innerHTML = nameHtml;
     tr.appendChild(tdName);
 
     const formattedBudget = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(stats.initialBudget || 0);
@@ -448,6 +512,21 @@ function renderSummaryTab() {
     tdRemaining.textContent = formatCurrency(stats.remaining);
     tr.appendChild(tdRemaining);
 
+    // Acciones cell
+    const tdActions = document.createElement("td");
+    tdActions.className = "text-center";
+    tdActions.innerHTML = `
+      <div class="action-buttons-cell" style="display: flex; justify-content: center; gap: 8px;">
+        <button type="button" class="btn-action-icon btn-edit-custom-rubro" data-rubro="${rubro}" title="Editar rubro" style="background: none; border: none; color: var(--primary); cursor: pointer; padding: 4px; font-size: 0.95rem;">
+          <i class="fa-solid fa-pen-to-square"></i>
+        </button>
+        <button type="button" class="btn-action-icon btn-delete-custom-rubro" data-rubro="${rubro}" title="Eliminar rubro" style="background: none; border: none; color: var(--danger); cursor: pointer; padding: 4px; font-size: 0.95rem;">
+          <i class="fa-solid fa-trash-can"></i>
+        </button>
+      </div>
+    `;
+    tr.appendChild(tdActions);
+
     tbody.appendChild(tr);
   });
 
@@ -461,6 +540,7 @@ function renderSummaryTab() {
     <td class="text-right val-neutral">$0.00</td>
     <td class="text-right val-negative">${taxSpent > 0 ? formatCurrency(taxSpent) : "$0.00"}</td>
     <td class="text-right ${-taxSpent >= 0 ? 'val-neutral' : 'val-negative'}">${formatCurrency(-taxSpent)}</td>
+    <td></td>
   `;
   tbody.appendChild(trTax);
 
@@ -613,7 +693,7 @@ function renderMonthRubrosList(monthData) {
   activeRubroNames.forEach(rubroName => {
     const rubroData = monthData.rubros[rubroName];
     const rubroStats = calculateMonthRubroStats(monthData, rubroName);
-    const isSpecial = SPECIAL_RUBROS.includes(rubroName);
+    const isSpecial = isCaja(rubroName);
 
     const card = document.createElement("div");
     card.className = "month-rubro-card";
@@ -626,7 +706,7 @@ function renderMonthRubrosList(monthData) {
     titleContainer.className = "rubro-card-title";
     titleContainer.innerHTML = `<h5>${rubroName}</h5>`;
     if (isSpecial) {
-      titleContainer.innerHTML += ` <span class="special-tag" title="Monto entregado completo en el mes, gasto real anual.">Especial</span>`;
+      titleContainer.innerHTML += ` <span class="special-tag" title="Monto entregado completo en el mes, gasto real anual.">Caja</span>`;
     }
     cardHeader.appendChild(titleContainer);
 
@@ -878,10 +958,14 @@ function renderTrashTab() {
     let detailsLabel = "";
 
     if (item.type === "rubro") {
-      iconClass = "type-rubro fa-folder-open";
+      iconClass = "type-movements-trash fa-money-bill-transfer";
       typeLabel = "Rubro Mensual";
       const monthLabel = MONTHS_ORDER.find(m => m.key === item.originalMonthKey)?.label || item.originalMonthKey;
       detailsLabel = `Rubro "${item.originalRubroName}" en el mes de ${monthLabel} (Monto: ${formatCurrency(item.data.monthlyBudget)})`;
+    } else if (item.type === "customRubro") {
+      iconClass = "type-summary-trash fa-chart-pie";
+      typeLabel = "Rubro Personalizado";
+      detailsLabel = `Definición del rubro "${item.data.name}" (Caja: ${item.data.isCaja ? 'Sí' : 'No'})`;
     } else if (item.type === "movement") {
       iconClass = "type-movement fa-money-bill-transfer";
       typeLabel = "Movimiento";
@@ -966,6 +1050,41 @@ function restoreTrashItem(itemId) {
     state.periods.sort((a, b) => b.startYear - a.startYear);
     state.activePeriodId = item.data.id;
   } 
+  else if (item.type === "customRubro") {
+    // Re-insert rubro definition
+    if (!state.rubros) state.rubros = [];
+    const alreadyExists = state.rubros.some(r => 
+      r.name.toLowerCase() === item.data.name.toLowerCase()
+    );
+    if (!alreadyExists) {
+      state.rubros.push({ name: item.data.name, isCaja: item.data.isCaja });
+    }
+    
+    // Restore budgets in all periods
+    state.periods.forEach(p => {
+      if (p.budgets && item.data.budgets && item.data.budgets[p.id] !== undefined) {
+        p.budgets[item.data.name] = item.data.budgets[p.id];
+      }
+    });
+    
+    // Restore monthly occurrences in all periods
+    state.periods.forEach(p => {
+      if (p.months && item.data.monthlyOccurrences && item.data.monthlyOccurrences[p.id]) {
+        const periodOccurrences = item.data.monthlyOccurrences[p.id];
+        Object.keys(periodOccurrences).forEach(monthKey => {
+          if (p.months[monthKey]) {
+            p.months[monthKey].rubros[item.data.name] = periodOccurrences[monthKey];
+          }
+        });
+      }
+    });
+    
+    // Remove from trash list
+    state.trash.splice(itemIndex, 1);
+    saveState();
+    refreshUI();
+    return;
+  }
   else {
     // Check if original period exists
     const period = state.periods.find(p => p.id === item.originalPeriodId);
@@ -1223,7 +1342,7 @@ function handleSaveMovement(rubroName, date, type, value, reason, realSpentVal, 
     return false;
   }
 
-  const isSpecial = SPECIAL_RUBROS.includes(rubroName);
+  const isSpecial = isCaja(rubroName);
   let finalRealSpent = undefined;
   
   if (isSpecial && type === "envio") {
@@ -1354,7 +1473,7 @@ function handleOpenMovementNotes(rubroName, movId, readOnly = false) {
   document.getElementById("note-detail-value").className = isEnvio ? "val-negative" : "val-positive";
   
   const realSpentWrapper = document.getElementById("note-detail-real-spent-wrapper");
-  const isSpecial = SPECIAL_RUBROS.includes(rubroName);
+  const isSpecial = isCaja(rubroName);
   if (isSpecial && movement.type === "envio") {
     realSpentWrapper.style.display = "block";
     const realSpentVal = (movement.realSpent !== undefined && movement.realSpent !== null) ? movement.realSpent : movement.value;
@@ -1673,6 +1792,174 @@ function handleDeleteFund(fundId) {
   );
 }
 
+// Create dynamic custom rubro
+function handleCreateCustomRubro(name, isCajaVal = false) {
+  if (!name) return false;
+  
+  const trimmedName = name.trim();
+  if (trimmedName === "") return false;
+  
+  // Case-insensitive duplicate check
+  const exists = (state.rubros || []).some(r => 
+    r.name.toLowerCase() === trimmedName.toLowerCase()
+  );
+  
+  if (exists) {
+    alert("El rubro ya existe.");
+    return false;
+  }
+  
+  if (!state.rubros) {
+    state.rubros = [];
+  }
+  state.rubros.push({ name: trimmedName, isCaja: isCajaVal });
+  
+  // Initialize budgets to 0 for this new rubro in all existing periods
+  state.periods.forEach(p => {
+    if (p.budgets && p.budgets[trimmedName] === undefined) {
+      p.budgets[trimmedName] = 0;
+    }
+  });
+  
+  saveState();
+  return true;
+}
+
+// Delete custom rubro and backup to trash
+function handleDeleteCustomRubro(rubroName) {
+  const rubroIdx = (state.rubros || []).findIndex(r => 
+    r.name.toLowerCase() === rubroName.toLowerCase()
+  );
+  if (rubroIdx === -1) return;
+  
+  const rubro = state.rubros[rubroIdx];
+  const name = rubro.name;
+  const isCajaVal = !!rubro.isCaja;
+  
+  // Backup budgets across all periods
+  const budgetsBackup = {};
+  state.periods.forEach(p => {
+    budgetsBackup[p.id] = p.budgets[name] || 0;
+  });
+  
+  // Backup monthly occurrences across all periods
+  const occurrencesBackup = {};
+  state.periods.forEach(p => {
+    occurrencesBackup[p.id] = {};
+    if (p.months) {
+      Object.keys(p.months).forEach(monthKey => {
+        const mData = p.months[monthKey];
+        if (mData && mData.rubros && mData.rubros[name]) {
+          occurrencesBackup[p.id][monthKey] = mData.rubros[name];
+        }
+      });
+    }
+  });
+  
+  // Create trash item
+  const trashItem = {
+    id: "trash-" + Date.now(),
+    type: "customRubro",
+    deletedAt: new Date().toISOString(),
+    originalPeriodId: state.activePeriodId,
+    originalRubroName: name,
+    data: {
+      name: name,
+      isCaja: isCajaVal,
+      budgets: budgetsBackup,
+      monthlyOccurrences: occurrencesBackup
+    }
+  };
+  
+  state.trash.push(trashItem);
+  
+  // Remove from state.rubros
+  state.rubros.splice(rubroIdx, 1);
+  
+  // Clean up from active period / all periods
+  state.periods.forEach(p => {
+    if (p.budgets) {
+      delete p.budgets[name];
+    }
+    if (p.months) {
+      Object.keys(p.months).forEach(monthKey => {
+        const mData = p.months[monthKey];
+        if (mData && mData.rubros) {
+          delete mData.rubros[name];
+        }
+      });
+    }
+  });
+  
+  saveState();
+  refreshUI();
+}
+
+// Edit custom rubro name and Caja status
+function handleSaveEditCustomRubro(oldName, newName, isCajaVal) {
+  if (!newName) return false;
+  
+  const trimmedNewName = newName.trim();
+  if (trimmedNewName === "") return false;
+  
+  // If name changed, check for duplicates
+  if (trimmedNewName.toLowerCase() !== oldName.toLowerCase()) {
+    const exists = (state.rubros || []).some(r => 
+      r.name.toLowerCase() === trimmedNewName.toLowerCase()
+    );
+    
+    if (exists) {
+      alert("Ya existe un rubro con ese nombre.");
+      return false;
+    }
+  }
+  
+  // Update state.rubros
+  const idx = (state.rubros || []).findIndex(r => 
+    r.name.toLowerCase() === oldName.toLowerCase()
+  );
+  
+  if (idx !== -1) {
+    state.rubros[idx] = { name: trimmedNewName, isCaja: isCajaVal };
+  } else {
+    return false;
+  }
+  
+  // If name changed, rename keys in budgets and months
+  if (trimmedNewName !== oldName) {
+    state.periods.forEach(p => {
+      // Budgets
+      if (p.budgets && p.budgets[oldName] !== undefined) {
+        p.budgets[trimmedNewName] = p.budgets[oldName];
+        delete p.budgets[oldName];
+      }
+      // Monthly rubros
+      if (p.months) {
+        Object.keys(p.months).forEach(monthKey => {
+          const monthData = p.months[monthKey];
+          if (monthData && monthData.rubros && monthData.rubros[oldName] !== undefined) {
+            monthData.rubros[trimmedNewName] = monthData.rubros[oldName];
+            delete monthData.rubros[oldName];
+          }
+        });
+      }
+    });
+    
+    // Rename in trash
+    state.trash.forEach(item => {
+      if (item.originalRubroName === oldName) {
+        item.originalRubroName = trimmedNewName;
+      }
+      if (item.type === "customRubro" && item.data && item.data.name === oldName) {
+        item.data.name = trimmedNewName;
+      }
+    });
+  }
+  
+  saveState();
+  return true;
+}
+
 // Update Annual budget for a rubro
 function handleUpdateAnnualBudget(rubroName, value) {
   const period = getActivePeriod();
@@ -1692,7 +1979,7 @@ function updateSummaryTotals() {
   let totalSpent = 0;
   let totalRemaining = 0;
 
-  PREDEFINED_RUBROS.forEach(rubro => {
+  getAllRubros().forEach(rubro => {
     const stats = calculateAnnualRubroStats(period, rubro);
     totalBudget += stats.initialBudget;
     totalIncome += stats.totalIncome;
@@ -1772,8 +2059,9 @@ function handleImport(event) {
 
   fileReader.onload = function(e) {
     try {
-      const importedData = JSON.parse(e.target.result);
+      let importedData = JSON.parse(e.target.result);
       if (importedData && Array.isArray(importedData.periods) && importedData.activePeriodId) {
+        importedData = migrateState(importedData);
         state = importedData;
         
         // Ensure trash exists
@@ -2041,7 +2329,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const select = document.getElementById("rubro-select-input");
     select.innerHTML = "";
 
-    const unusedRubros = PREDEFINED_RUBROS.filter(r => !monthData.rubros[r]);
+    const unusedRubros = getAllRubros().filter(r => !monthData.rubros[r]);
 
     if (unusedRubros.length === 0) {
       alert("Todos los rubros ya están agregados en este mes.");
@@ -2068,6 +2356,73 @@ document.addEventListener("DOMContentLoaded", () => {
     if (handleAddRubroToMonth(rubro, budget)) {
       closeModal();
       renderMovementsTab();
+    }
+  });
+
+  // Open modal: Create New Rubro
+  document.querySelectorAll(".btn-new-rubro-trigger").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.getElementById("new-rubro-name").value = "";
+      document.getElementById("new-rubro-is-caja").checked = false;
+      openModal("modal-create-rubro");
+    });
+  });
+
+  // Submit form: Create New Rubro
+  document.getElementById("form-create-rubro").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = document.getElementById("new-rubro-name").value.trim();
+    const isCajaVal = document.getElementById("new-rubro-is-caja").checked;
+    if (handleCreateCustomRubro(name, isCajaVal)) {
+      closeModal();
+      refreshUI();
+    }
+  });
+
+  // Edit custom rubro delegation in Summary Table
+  document.getElementById("rubros-summary-body").addEventListener("click", (e) => {
+    const btnEdit = e.target.closest(".btn-edit-custom-rubro");
+    if (btnEdit) {
+      const rubroName = btnEdit.getAttribute("data-rubro");
+      const custom = (state.rubros || []).find(r => 
+        r.name.toLowerCase() === rubroName.toLowerCase()
+      );
+      
+      const isCajaVal = custom ? !!custom.isCaja : false;
+      const displayName = custom ? custom.name : rubroName;
+      
+      document.getElementById("edit-custom-rubro-old-name").value = displayName;
+      document.getElementById("edit-custom-rubro-name").value = displayName;
+      document.getElementById("edit-custom-rubro-is-caja").checked = isCajaVal;
+      
+      openModal("modal-edit-custom-rubro");
+    }
+    
+    const btnDelete = e.target.closest(".btn-delete-custom-rubro");
+    if (btnDelete) {
+      const rubroName = btnDelete.getAttribute("data-rubro");
+      
+      showConfirmModal(
+        `<i class="fa-solid fa-trash-can text-danger"></i> Eliminar Rubro`,
+        `¿Está seguro de enviar el rubro "${rubroName}" a la papelera?`,
+        `Se eliminará de la vista y de los meses del período activo. Podrás restaurarlo desde la Papelera.`,
+        () => {
+          handleDeleteCustomRubro(rubroName);
+        }
+      );
+    }
+  });
+
+  // Submit form: Edit Custom Rubro
+  document.getElementById("form-edit-custom-rubro").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const oldName = document.getElementById("edit-custom-rubro-old-name").value;
+    const newName = document.getElementById("edit-custom-rubro-name").value.trim();
+    const isCajaVal = document.getElementById("edit-custom-rubro-is-caja").checked;
+    
+    if (handleSaveEditCustomRubro(oldName, newName, isCajaVal)) {
+      closeModal();
+      refreshUI();
     }
   });
 
@@ -2108,7 +2463,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const select = document.getElementById("edit-rubro-select-input");
       select.innerHTML = "";
       
-      PREDEFINED_RUBROS.forEach(r => {
+      getAllRubros().forEach(r => {
         // Show if not active, or if it is the current one
         if (!monthData.rubros[r] || r === rubro) {
           const opt = document.createElement("option");
@@ -2173,7 +2528,7 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("movement-type").value = "envio";
       document.getElementById("movement-real-spent").value = "";
 
-      const isSpecial = SPECIAL_RUBROS.includes(rubro);
+      const isSpecial = isCaja(rubro);
       document.getElementById("special-rubro-fields").style.display = isSpecial ? "block" : "none";
 
       openModal("modal-add-movement");
@@ -2206,7 +2561,7 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("movement-reason").value = movement.reason;
       document.getElementById("movement-type").value = movement.type;
       
-      const isSpecial = SPECIAL_RUBROS.includes(rubro);
+      const isSpecial = isCaja(rubro);
       const specialBox = document.getElementById("special-rubro-fields");
       
       if (isSpecial && movement.type === "envio") {
@@ -2224,7 +2579,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Live toggle special rubro fields
   document.getElementById("movement-type").addEventListener("change", (e) => {
     const rubro = document.getElementById("movement-rubro-id").value;
-    const isSpecial = SPECIAL_RUBROS.includes(rubro);
+    const isSpecial = isCaja(rubro);
     const type = e.target.value;
     const specialBox = document.getElementById("special-rubro-fields");
     
@@ -2246,7 +2601,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const movId = document.getElementById("movement-id").value; // Empty in add, text in edit
     
     let realSpentVal = undefined;
-    if (SPECIAL_RUBROS.includes(rubro) && type === "envio") {
+    if (isCaja(rubro) && type === "envio") {
       const rawReal = document.getElementById("movement-real-spent").value;
       realSpentVal = rawReal === "" ? undefined : parseNumeric(rawReal);
     }
